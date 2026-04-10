@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=10">
+  <link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 
@@ -37,45 +37,59 @@
       <div class="rules-content">
         <div class="rule-section">
           <h3>Goal</h3>
-          <p>Place the <strong>10 of Diodes</strong> on its Foundation Stack to win.</p>
-          <p>Your score reflects how many cards you <strong>saved</strong>.</p>
+          <ul class="rule-list">
+            <li>Place the <strong>10 of Diodes</strong> on its Foundation Stack to win.</li>
+            <li>Your score reflects how many cards you <strong>saved</strong>.</li>
+          </ul>
         </div>
         <div class="rule-section">
           <h3>Layout</h3>
-          <p>40-card deck (ranks 1&ndash;10), 4 suits, 6 tableau columns.</p>
-          <p>Only the top card of each tableau column starts face-up.</p>
-          <p>The remaining cards form the Stock Pile in the top-left.</p>
-          <p>An Active Pile and 4 Foundation Stacks also sit in the top row and start empty.</p>
-        </div>
-        <div class="rule-section">
-          <h3>Building Foundations</h3>
-          <p>Each Foundation Stack builds <strong>up by suit</strong> from 1 &ndash; 10.</p>
-          <p>Once a card is placed on a Foundation Stack, it <strong>cannot be removed</strong>.</p>
-        </div>
-        <div class="rule-section">
-          <h3>Building Tableaus</h3>
-          <p>Tableau columns build <strong>down by rank</strong> with a suit hierarchy.</p>
-          <p>A higher ranked suit cannot be placed below a lower ranked one.</p>
-          <p>Suit hierarchy: <strong>Diodes &gt; Prisms &gt; Blades &gt; Combiners</strong></p>
-          <p>You can move a face-up card (and all cards below it) to another tableau column.</p>
-          <p>Only a 10 can be placed on an empty tableau column.</p>
-        </div>
-        <div class="rule-section">
-          <h3>Stock Pile</h3>
-          <p>Click the Stock Pile to draw one card to the top of the Active Pile.</p>
-          <p>The top Active Pile card can be placed on a tableau column or Foundation Stack.</p>
-          <p>When the Stock Pile is empty, click it again to recycle the cards.</p>
+          <ul class="rule-list">
+            <li>40-card deck (ranks 1&ndash;10), 4 suits, 6 tableau columns.</li>
+            <li>Only the top card of each tableau column starts face-up.</li>
+            <li>The remaining cards form the Stock Pile in the top-left.</li>
+            <li>An Active Pile and 4 Foundation Stacks also sit in the top row and start empty.</li>
+          </ul>
         </div>
         <div class="rule-section">
           <h3>Controls</h3>
-          <p>Click a card to select it, then drag the card or click a destination to move it.</p>
-          <p>Double-click a card to auto-send it to its Foundation Stack.</p>
+          <ul class="rule-list">
+            <li>Click a card to select it, then drag the card or click a destination to move it.</li>
+            <li>Double-click a card to auto-send it to its Foundation Stack.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h3>Building Foundations</h3>
+          <ul class="rule-list">
+            <li>Each Foundation Stack builds <strong>up by suit</strong> from 1 &ndash; 10.</li>
+            <li>Once a card is placed on a Foundation Stack, it <strong>cannot be removed</strong>.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h3>Building Tableaus</h3>
+          <ul class="rule-list">
+            <li>Tableau columns build <strong>down by rank</strong> with a suit hierarchy.</li>
+            <li>A higher ranked suit cannot be placed below a lower ranked one.</li>
+            <li>Suit hierarchy: <strong>Diodes &gt; Prisms &gt; Blades &gt; Combiners</strong></li>
+            <li>You can move a face-up card (and all cards below it) to another tableau column.</li>
+            <li>Only a 10 can be placed on an empty tableau column.</li>
+          </ul>
+        </div>
+        <div class="rule-section">
+          <h3>Stock Pile</h3>
+          <ul class="rule-list">
+            <li>Click the Stock Pile to draw one card to the top of the Active Pile.</li>
+            <li>The top Active Pile card can be placed on a tableau column or Foundation Stack.</li>
+            <li>When the Stock Pile is empty, click it again to recycle the cards.</li>
+          </ul>
         </div>
         <div class="rule-section">
           <h3>Scoring</h3>
-          <p>Your score calculates saved cards &mdash; those <em>not</em> placed on Foundation Stacks:</p>
-          <p><strong>Score</strong> = Saved Prisms &times; 1 + Saved Blades &times; 2 + Saved Combiners &times; 3</p>
-          <p>A score of <strong>60</strong> is a perfect game (all cards saved). Higher is better!</p>
+          <ul class="rule-list">
+            <li>Your score calculates saved cards &mdash; those <em>not</em> placed on Foundation Stacks:</li>
+            <li><strong>Score</strong> = Saved Prisms &times; 1 + Saved Blades &times; 2 + Saved Combiners &times; 3</li>
+            <li>A score of <strong>60</strong> is a perfect game (all cards saved). Higher is better!</li>
+          </ul>
         </div>
       </div>
       <div class="rules-back-row">
@@ -271,13 +285,13 @@
 
   <!-- Scripts in dependency order -->
   <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
-  <script src="js/cards.js?v=10"></script>
-  <script src="js/game.js?v=10"></script>
-  <script src="js/animations.js?v=10"></script>
-  <script src="js/textures.js?v=10"></script>
-  <script src="js/renderer.js?v=10"></script>
-  <script src="js/save.js?v=10"></script>
-  <script src="js/ui.js?v=10"></script>
+  <script src="js/cards.js?v=11"></script>
+  <script src="js/game.js?v=11"></script>
+  <script src="js/animations.js?v=11"></script>
+  <script src="js/textures.js?v=11"></script>
+  <script src="js/renderer.js?v=11"></script>
+  <script src="js/save.js?v=11"></script>
+  <script src="js/ui.js?v=11"></script>
 
 </body>
 </html>

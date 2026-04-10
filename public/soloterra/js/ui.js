@@ -1014,18 +1014,34 @@ var UI = (function () {
     }
     var score = Game.calculateScore();
     var moves = Game.getMoves();
-    SaveSystem.addLeaderboardEntry(name, score, moves);
-    document.getElementById('leaderboard-entry').classList.add('submitted');
+    // Disable button during submission
+    var submitBtn = document.getElementById('btn-submit-score');
+    submitBtn.disabled = true;
+    SaveSystem.addLeaderboardEntry(name, score, moves, function () {
+      document.getElementById('leaderboard-entry').classList.add('submitted');
+    });
   }
 
   function populateLeaderboard() {
-    var board = SaveSystem.getLeaderboard();
+    var tbody = document.getElementById('leaderboard-body');
+    var emptyMsg = document.getElementById('leaderboard-empty');
+    tbody.innerHTML = '';
+    emptyMsg.style.display = 'block';
+    emptyMsg.textContent = 'Loading...';
+
+    SaveSystem.getLeaderboard(function (board) {
+      renderLeaderboardTable(board);
+    });
+  }
+
+  function renderLeaderboardTable(board) {
     var tbody = document.getElementById('leaderboard-body');
     var emptyMsg = document.getElementById('leaderboard-empty');
     tbody.innerHTML = '';
 
-    if (board.length === 0) {
+    if (!board || board.length === 0) {
       emptyMsg.style.display = 'block';
+      emptyMsg.textContent = 'No scores yet. Win a game to get on the board!';
       return;
     }
     emptyMsg.style.display = 'none';

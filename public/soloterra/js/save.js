@@ -91,11 +91,24 @@ var SaveSystem = (function () {
     }
   }
 
-  // ---- Leaderboard ----
+  // ---- Leaderboard (Server-side with localStorage fallback) ----
   var LEADERBOARD_KEY = 'soloterra_leaderboard';
   var LEADERBOARD_MAX = 60;
+  var API_BASE = '/api/soloterra/leaderboard';
 
-  function getLeaderboard() {
+  // Cache of last known leaderboard data
+  var leaderboardCache = [];
+
+  function sortBoard(board) {
+    board.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.moves !== b.moves) return a.moves - b.moves;
+      return b.timestamp - a.timestamp;
+    });
+    return board;
+  }
+
+  function getLocalLeaderboard() {
     try {
       var raw = localStorage.getItem(LEADERBOARD_KEY);
       if (!raw) return [];
@@ -105,23 +118,63 @@ var SaveSystem = (function () {
     }
   }
 
-  function addLeaderboardEntry(name, score, moves) {
-    var board = getLeaderboard();
-    board.push({
-      name: name,
-      score: score,
-      moves: moves,
-      timestamp: Date.now()
-    });
-    // Sort: score desc, then moves asc, then most recent first
-    board.sort(function (a, b) {
-      if (b.score !== a.score) return b.score - a.score;
-      if (a.moves !== b.moves) return a.moves - b.moves;
-      return b.timestamp - a.timestamp;
-    });
-    // Keep all entries but display only top 60
-    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(board));
-    return board;
+  function saveLocalLeaderboard(board) {
+    try {
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(board));
+    } catch (e) { /* ignore */ }
+  }
+
+  // Fetch leaderboard from server, fall back to localStorage
+  function getLeaderboard(callback) {
+    fetch(API_BASE)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        leaderboardCache = data;
+        saveLocalLeaderboard(data); // sync local cache
+        if (callback) callback(data);
+      })
+      .catch(function () {
+        // Fallback to localStorage
+        var local = getLocalLeaderboard();
+        leaderboardCache = local;
+        if (callback) callback(local);
+      });
+  }
+
+  // Submit score to server, fall back to localStorage
+  function addLeaderboardEntry(name, score, moves, callback) {
+    fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, score: score, moves: moves })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.leaderboard) {
+          leaderboardCache = data.leaderboard;
+          saveLocalLeaderboard(data.leaderboard);
+        }
+        if (callback) callback(true);
+      })
+      .catch(function () {
+        // Fallback: save locally
+        var board = getLocalLeaderboard();
+        board.push({
+          name: name,
+          score: score,
+          moves: moves,
+          timestamp: Date.now()
+        });
+        sortBoard(board);
+        saveLocalLeaderboard(board);
+        leaderboardCache = board;
+        if (callback) callback(true);
+      });
+  }
+
+  // Synchronous getter for cached data (used by populateLeaderboard after async fetch)
+  function getCachedLeaderboard() {
+    return leaderboardCache;
   }
 
   return {
@@ -135,6 +188,7 @@ var SaveSystem = (function () {
     loadSuitPrefs: loadSuitPrefs,
     getLeaderboard: getLeaderboard,
     addLeaderboardEntry: addLeaderboardEntry,
+    getCachedLeaderboard: getCachedLeaderboard,
     LEADERBOARD_MAX: LEADERBOARD_MAX
   };
 })();
