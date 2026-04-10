@@ -1810,16 +1810,17 @@ var Renderer = (function () {
     c.fillStyle = vignette;
     c.fillRect(0, 0, W, H);
 
-    // "SoloTerra" watermark (3x bolder)
+    // "SoloTerra" watermark fixed near bottom of screen
     c.save();
-    c.font = '900 ' + Math.min(W * 0.06, 48) + 'px Cinzel, Georgia, serif';
+    var wmSize = Math.min(W * 0.05, 40);
+    c.font = '900 ' + wmSize + 'px Cinzel, Georgia, serif';
     c.textAlign = 'center';
-    c.textBaseline = 'middle';
+    c.textBaseline = 'bottom';
     c.lineWidth = 2;
     c.strokeStyle = 'rgba(200, 220, 180, 0.12)';
-    c.strokeText('SoloTerra', W / 2, H / 2);
+    c.strokeText('SoloTerra', W / 2, H - wmSize * 0.5);
     c.fillStyle = 'rgba(200, 220, 180, 0.24)';
-    c.fillText('SoloTerra', W / 2, H / 2);
+    c.fillText('SoloTerra', W / 2, H - wmSize * 0.5);
     c.restore();
 
     return tableCanvas;
@@ -2377,11 +2378,27 @@ var Renderer = (function () {
     var margin = Math.min(W * 0.03, 20);
     var gap = Math.min(W * 0.015, 12);
 
+    // HUD height reservation (scales down on small screens)
+    var hudH = Math.min(48, H * 0.06);
+
     // Width based on max(7, numCols) columns for consistent sizing
     var layoutCols = Math.max(7, numCols);
     var availW = W - margin * 2;
     var naturalWidth = CARD_W * layoutCols + gap * (layoutCols - 1);
-    var scale = Math.min(1.2, availW / naturalWidth);
+    var scaleW = availW / naturalWidth;
+
+    // Height constraint: top row card + gap + deepest tableau at deal time
+    // Deepest column has (numCols-1) face-down cards + 1 face-up card visible
+    var maxFaceDown = numCols - 1; // 5 for 6-col
+    var estimatedFaceDownOff = 20; // rough offset per face-down card at scale=1
+    var estimatedFaceUpOff = 30;
+    var bottomPad = margin + 10; // breathing room at bottom
+    var availH = H - hudH - margin - bottomPad;
+    // Need: cardH(top row) + gap*2.5 + maxFaceDown*faceDownOff + 2*faceUpOff + cardH(bottom card)
+    var naturalHeight = CARD_H + gap * 2.5 + maxFaceDown * estimatedFaceDownOff + 2 * estimatedFaceUpOff + CARD_H;
+    var scaleH = availH / naturalHeight;
+
+    var scale = Math.min(1.2, scaleW, scaleH);
 
     var cw = CARD_W * scale;
     var ch = CARD_H * scale;
@@ -2398,11 +2415,11 @@ var Renderer = (function () {
     // Tableau column spacing (numCols positions across same width)
     var tabColSpacing = numCols > 1 ? (totalWidth - cw) / (numCols - 1) : 0;
 
-    var topY = margin + ch / 2 + 55;
+    var topY = hudH + margin + ch / 2;
     var tableauY = topY + ch + g * 2.5;
 
-    var faceDownOffset = Math.max(20 * scale, 14);
-    var faceUpOffset = Math.max(30 * scale, 22);
+    var faceDownOffset = Math.max(20 * scale, 10);
+    var faceUpOffset = Math.max(30 * scale, 16);
 
     // Top row X positions (6 evenly spaced)
     function topRowX(i) { return startX + i * topRowSpacing; }
@@ -2420,6 +2437,7 @@ var Renderer = (function () {
       faceDownOffset: faceDownOffset,
       faceUpOffset: faceUpOffset,
       numCols: numCols,
+      hudH: hudH,
 
       // Stock position (slot 0)
       stockX: topRowX(0),

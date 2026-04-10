@@ -258,6 +258,7 @@ html, body {
   max-width: 90%;
   width: fit-content;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   background: var(--bg-panel);
   border: 1px solid rgba(212, 160, 23, 0.2);
@@ -441,6 +442,7 @@ html, body {
   max-width: 90%;
   width: fit-content;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
   background: var(--bg-panel);
   border: 1px solid rgba(212, 160, 23, 0.2);
@@ -588,7 +590,7 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  padding: 10px 16px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -872,13 +874,7 @@ html, body {
   .btn-play { font-size: 1.15rem; padding: 0.6em 2em; }
   .btn-menu-size { font-size: 0.85rem; padding: 0.5em 1.5em; }
 
-  .game-hud {
-    padding: 6px 8px;
-  }
-
-  .hud-label { font-size: 0.75rem; }
-  .hud-value { font-size: 0.825rem; }
-  .btn-hud { font-size: 0.75rem; padding: 0.225em 0.45em; }
+  .game-hud { padding: 0 8px; }
 
   .rules-panel {
     padding: 1em 1.2em;
@@ -932,10 +928,6 @@ html, body {
   .btn-play { font-size: 1rem; }
   .btn-menu-size { font-size: 0.8rem; }
 
-  .hud-label { font-size: 0.65rem; }
-  .hud-value { font-size: 0.725rem; }
-  .btn-hud { font-size: 0.65rem; }
-
   .foundation-result {
     width: 44px;
     min-width: 44px;
@@ -954,19 +946,16 @@ html, body {
   .btn-play { font-size: 1rem; padding: 0.4em 1.8em; }
   .btn-menu-size { font-size: 0.8rem; padding: 0.35em 1.2em; }
 
-  .game-hud { padding: 4px 8px; }
-  .hud-label { font-size: 0.7rem; }
-  .hud-value { font-size: 0.775rem; }
-  .btn-hud { font-size: 0.7rem; padding: 0.2em 0.4em; }
+  .game-hud { padding: 0 8px; }
 
-  .rules-panel { padding: 0.8em 1.5em; max-height: 95vh; }
+  .rules-panel { padding: 0.8em 1.5em; max-height: 95dvh; }
   .rules-panel h2 { font-size: 1.2rem; margin-bottom: 0.5em; }
   .rule-section { margin-bottom: 0.5em; }
   .rule-section h3 { font-size: 0.85rem; }
   .rule-list li { font-size: 0.8rem; line-height: 1.3; }
 
-  .options-panel { padding: 0.8em 1.5em; max-height: 95vh; }
-  .leaderboard-panel { padding: 0.8em 1.5em; max-height: 95vh; }
+  .options-panel { padding: 0.8em 1.5em; max-height: 95dvh; }
+  .leaderboard-panel { padding: 0.8em 1.5em; max-height: 95dvh; }
 
   .results-content { padding: 1em; }
   .winner-title { font-size: 1.8rem; margin-bottom: 0.4em; }

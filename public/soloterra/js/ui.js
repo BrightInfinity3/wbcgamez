@@ -545,6 +545,25 @@ var UI = (function () {
     var rightEdge = layout.foundationX(3) + layout.cw / 2;
     hud.style.paddingLeft = '0';
     hud.style.paddingRight = (size.w - rightEdge) + 'px';
+    hud.style.height = layout.hudH + 'px';
+
+    // Dynamic font sizing based on layout scale and available space
+    var labelSize = Math.max(0.55, Math.min(1.125, layout.scale * 1.1));
+    var valueSize = labelSize * 1.12;
+    var btnSize = Math.max(0.55, Math.min(1.125, layout.scale * 1.05));
+
+    var labels = hud.querySelectorAll('.hud-label');
+    for (var i = 0; i < labels.length; i++) {
+      labels[i].style.fontSize = labelSize + 'rem';
+    }
+    var values = hud.querySelectorAll('.hud-value');
+    for (var j = 0; j < values.length; j++) {
+      values[j].style.fontSize = valueSize + 'rem';
+    }
+    var btns = hud.querySelectorAll('.btn-hud');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].style.fontSize = btnSize + 'rem';
+    }
 
     // Align "Moves:" left edge to stock pile left edge
     var movesItem = document.getElementById('hud-item-moves');
