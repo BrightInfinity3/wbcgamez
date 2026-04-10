@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WBC Gamez</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-deep: #06060f;
+      --bg-card: rgba(15, 15, 35, 0.85);
+      --border-glow: rgba(100, 100, 255, 0.15);
+      --neon-blue: #4d8bff;
+      --neon-cyan: #00e5ff;
+      --neon-purple: #a855f7;
+      --neon-pink: #f43f85;
+      --neon-green: #22d67a;
+      --text-main: #e8eaf0;
+      --text-dim: #8890a4;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* === ANIMATED BACKGROUND === */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(77, 139, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(77, 139, 255, 0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      z-index: 0;
+    }
+
+    .bg-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.12;
+      z-index: 0;
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+    .bg-glow.glow-1 {
+      top: -200px;
+      left: -100px;
+      background: var(--neon-purple);
+    }
+    .bg-glow.glow-2 {
+      bottom: -200px;
+      right: -100px;
+      background: var(--neon-blue);
+      animation-delay: -10s;
+    }
+    .bg-glow.glow-3 {
+      top: 40%;
+      left: 50%;
+      width: 400px;
+      height: 400px;
+      background: var(--neon-cyan);
+      opacity: 0.06;
+      animation-delay: -5s;
+    }
+
+    @keyframes drift {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(40px, 30px) scale(1.1); }
+      100% { transform: translate(-20px, 50px) scale(0.95); }
+    }
+
+    /* === LAYOUT === */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* === HEADER === */
+    .header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: clamp(2.5rem, 7vw, 4.5rem);
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      position: relative;
+      display: inline-block;
+    }
+
+    .logo::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-blue), var(--neon-purple), transparent);
+    }
+
+    .tagline {
+      margin-top: 20px;
+      font-size: 1.05rem;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    /* === PARTICLE CANVAS === */
+    #particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* === GAME GRID === */
+    .games {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+    }
+
+    /* === GAME CARD === */
+    .card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 16px;
+      padding: 32px 28px 28px;
+      cursor: pointer;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, var(--card-accent), transparent 60%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: transparent;
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 40px var(--card-glow);
+    }
+
+    .card-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      margin-bottom: 20px;
+      background: var(--card-icon-bg);
+      box-shadow: 0 4px 20px var(--card-glow);
+      transition: transform 0.35s ease;
+    }
+
+    .card:hover .card-icon {
+      transform: scale(1.1) rotate(-3deg);
+    }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    .card-desc {
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .tag {
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .card-play {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 20px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--card-accent);
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover .card-play {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .card-play .arrow {
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover .card-play .arrow {
+      transform: translateX(4px);
+    }
+
+    /* === CARD THEMES === */
+    .card.laserman {
+      --card-accent: #00e5ff;
+      --card-glow: rgba(0, 229, 255, 0.12);
+      --card-icon-bg: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 150, 255, 0.1));
+    }
+
+    .card.wordz {
+      --card-accent: #a855f7;
+      --card-glow: rgba(168, 85, 247, 0.12);
+      --card-icon-bg: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.1));
+    }
+
+    .card.soloterra {
+      --card-accent: #d4a017;
+      --card-glow: rgba(212, 160, 23, 0.12);
+      --card-icon-bg: linear-gradient(135deg, rgba(212, 160, 23, 0.15), rgba(180, 130, 20, 0.1));
+    }
+
+    /* === COMING SOON CARDS === */
+    .card.coming-soon {
+      --card-accent: rgba(255, 255, 255, 0.15);
+      --card-glow: rgba(255, 255, 255, 0.03);
+      --card-icon-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    .card.coming-soon:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: var(--border-glow);
+    }
+
+    .card.coming-soon:hover::before { opacity: 0; }
+    .card.coming-soon:hover .card-icon { transform: none; }
+
+    .coming-soon-badge {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-top: 20px;
+      display: inline-block;
+    }
+
+    /* === FOOTER === */
+    .footer {
+      text-align: center;
+      margin-top: 70px;
+      padding-top: 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .footer p {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+
+    .footer .wbc {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 640px) {
+      .page { padding: 40px 16px 60px; }
+      .header { margin-bottom: 40px; }
+      .games { grid-template-columns: 1fr; gap: 20px; }
+      .card { padding: 24px 20px 20px; }
+      .card-play { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Background effects -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+  <div class="bg-glow glow-3"></div>
+  <canvas id="particles"></canvas>
+
+  <div class="page">
+    <header class="header">
+      <h1 class="logo">WBC GAMEZ</h1>
+      <p class="tagline">Select your game</p>
+    </header>
+
+    <div class="games">
+
+      <!-- LASERMAN -->
+      <a href="/laserman/" class="card laserman">
+        <div class="card-icon">
+          <canvas id="laserman-icon" width="48" height="48"></canvas>
+        </div>
+        <h2 class="card-title">Laserman</h2>
+        <p class="card-desc">
+          A word-guessing game. Pick your character, dodge the lasers, and guess the word before you're zapped.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Word Game</span>
+        </div>
+        <div class="card-play">
+          Play Now <span class="arrow">&rarr;</span>
+        </div>
+      </a>
+
+      <!-- SOLOTERRA -->
+      <a href="/soloterra/" class="card soloterra">
+        <div class="card-icon">
+          <canvas id="soloterra-icon" width="48" height="48"></canvas>
+        </div>
+        <h2 class="card-title">SoloTerra</h2>
+        <p class="card-desc">
+          A custom solitaire variant with laser-themed suits, suit hierarchy rules, and a global leaderboard.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Card Game</span>
+          <span class="tag">Solitaire</span>
+        </div>
+        <div class="card-play">
+          Play Now <span class="arrow">&rarr;</span>
+        </div>
+      </a>
+
+      <!-- COMING SOON PLACEHOLDER -->
+      <div class="card coming-soon">
+        <div class="card-icon">🎮</div>
+        <h2 class="card-title">More Games</h2>
+        <p class="card-desc">
+          New games are in the lab. Stay tuned for more additions to the arcade.
+        </p>
+        <span class="coming-soon-badge">Coming Soon</span>
+      </div>
+
+    </div>
+
+    <footer class="footer">
+      <p>Built with &#9889; by <span class="wbc">MAK</span></p>
+    </footer>
+  </div>
+
+  <script>
+    // Floating particle system
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    const PARTICLE_COUNT = 50;
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() {
+        this.reset();
+        this.y = Math.random() * canvas.height;
+      }
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = canvas.height + 10;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedY = -(Math.random() * 0.4 + 0.1);
+        this.speedX = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.4 + 0.1;
+        const colors = ['77,139,255', '0,229,255', '168,85,247'];
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+      }
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX;
+        if (this.y < -10) this.reset();
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`;
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push(new Particle());
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => { p.update(); p.draw(); });
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Draw Laserman icon — green, smiling (victory state)
+    (function() {
+      const c = document.getElementById('laserman-icon');
+      const x = c.getContext('2d');
+      const W = 48, CX = W / 2, CY = W / 2;
+      const green = '#00ff88';
+
+      x.shadowColor = green;
+      x.shadowBlur = 4;
+      x.strokeStyle = green;
+      x.fillStyle = green;
+      x.lineWidth = 1.8;
+      x.lineCap = 'round';
+
+      // Head
+      const headY = CY - 10;
+      const headR = 8;
+      x.beginPath();
+      x.arc(CX, headY, headR, 0, Math.PI * 2);
+      x.stroke();
+
+      // Eyes
+      x.shadowBlur = 3;
+      x.beginPath();
+      x.arc(CX - 3, headY - 1.5, 1.2, 0, Math.PI * 2);
+      x.fill();
+      x.beginPath();
+      x.arc(CX + 3, headY - 1.5, 1.2, 0, Math.PI * 2);
+      x.fill();
+
+      // Smile (narrower arc, lowered)
+      x.shadowBlur = 5;
+      x.shadowColor = green;
+      x.lineWidth = 1.2;
+      x.beginPath();
+      x.arc(CX, headY + 0.5, 3, 0.5, Math.PI - 0.5);
+      x.stroke();
+
+      // Torso
+      x.shadowBlur = 4;
+      x.lineWidth = 1.8;
+      x.beginPath();
+      x.moveTo(CX, headY + headR);
+      x.lineTo(CX, CY + 12);
+      x.stroke();
+
+      // Arms
+      x.beginPath();
+      x.moveTo(CX - 10, CY + 6);
+      x.lineTo(CX, CY - 2);
+      x.stroke();
+      x.beginPath();
+      x.moveTo(CX + 10, CY + 6);
+      x.lineTo(CX, CY - 2);
+      x.stroke();
+
+      // Legs
+      x.beginPath();
+      x.moveTo(CX - 8, CY + 22);
+      x.lineTo(CX, CY + 12);
+      x.stroke();
+      x.beginPath();
+      x.moveTo(CX + 8, CY + 22);
+      x.lineTo(CX, CY + 12);
+      x.stroke();
+
+    })();
+
+    // Draw SoloTerra icon — gold card with diamond pip
+    (function() {
+      const c = document.getElementById('soloterra-icon');
+      const x = c.getContext('2d');
+      const W = 48;
+      const gold = '#d4a017';
+      const goldLight = '#f5d060';
+
+      x.shadowColor = gold;
+      x.shadowBlur = 4;
+
+      // Card outline
+      x.strokeStyle = gold;
+      x.lineWidth = 1.8;
+      x.beginPath();
+      x.roundRect(10, 4, 28, 40, 4);
+      x.stroke();
+
+      // Diamond pip in center
+      x.fillStyle = goldLight;
+      x.shadowBlur = 6;
+      x.beginPath();
+      x.moveTo(24, 14);
+      x.lineTo(31, 24);
+      x.lineTo(24, 34);
+      x.lineTo(17, 24);
+      x.closePath();
+      x.fill();
+
+      // Small rank "10" top-left
+      x.shadowBlur = 2;
+      x.font = 'bold 7px sans-serif';
+      x.fillStyle = gold;
+      x.fillText('10', 12, 12);
+    })();
+  </script>
+</body>
+</html>
