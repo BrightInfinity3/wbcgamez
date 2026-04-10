@@ -40,11 +40,11 @@ var Game = (function () {
     state.stuck = false;
 
     // Deal tableau columns:
-    //   No face cards (6 cols): column i gets i+2 cards (1-6 hidden + 1 face up)
+    //   No face cards (6 cols): column i gets i+1 cards (0-5 hidden + 1 face up)
     //   Face cards (7 cols): column i gets i+1 cards (0-6 hidden + 1 face up)
     for (var i = 0; i < numCols; i++) {
       state.tableau[i] = [];
-      var numCards = CardSystem.getFaceCardMode() ? i + 1 : i + 2;
+      var numCards = i + 1;
       for (var j = 0; j < numCards; j++) {
         state.tableau[i].push({
           card: deck.shift(),

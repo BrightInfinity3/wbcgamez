@@ -278,9 +278,9 @@
     }
 
     .card.soloterra {
-      --card-accent: #d4a017;
-      --card-glow: rgba(212, 160, 23, 0.12);
-      --card-icon-bg: linear-gradient(135deg, rgba(212, 160, 23, 0.15), rgba(180, 130, 20, 0.1));
+      --card-accent: #e53935;
+      --card-glow: rgba(229, 57, 53, 0.12);
+      --card-icon-bg: linear-gradient(135deg, rgba(229, 57, 53, 0.15), rgba(200, 40, 40, 0.1));
     }
 
     /* === COMING SOON CARDS === */
@@ -375,6 +375,7 @@
         </p>
         <div class="card-tags">
           <span class="tag">Word Game</span>
+          <span class="tag">Multiplayer</span>
         </div>
         <div class="card-play">
           Play Now <span class="arrow">&rarr;</span>
@@ -388,11 +389,11 @@
         </div>
         <h2 class="card-title">SoloTerra</h2>
         <p class="card-desc">
-          A custom solitaire variant with laser-themed suits, suit hierarchy rules, and a global leaderboard.
+          A custom solitaire variant with laser-themed cards, suit hierarchy rules, and a score leaderboard.
         </p>
         <div class="card-tags">
           <span class="tag">Card Game</span>
-          <span class="tag">Solitaire</span>
+          <span class="tag">Single-Player</span>
         </div>
         <div class="card-play">
           Play Now <span class="arrow">&rarr;</span>
@@ -411,9 +412,6 @@
 
     </div>
 
-    <footer class="footer">
-      <p>Built with &#9889; by <span class="wbc">MAK</span></p>
-    </footer>
   </div>
 
   <script>
@@ -537,39 +535,69 @@
 
     })();
 
-    // Draw SoloTerra icon — gold card with diamond pip
+    // Draw SoloTerra icon — red 10 of diodes card
     (function() {
       const c = document.getElementById('soloterra-icon');
       const x = c.getContext('2d');
-      const W = 48;
-      const gold = '#d4a017';
-      const goldLight = '#f5d060';
+      const red = '#e53935';
+      const redLight = '#ff6659';
 
-      x.shadowColor = gold;
+      x.shadowColor = red;
       x.shadowBlur = 4;
 
-      // Card outline
-      x.strokeStyle = gold;
-      x.lineWidth = 1.8;
+      // Card outline (white card)
+      x.fillStyle = '#fff';
       x.beginPath();
       x.roundRect(10, 4, 28, 40, 4);
+      x.fill();
+      x.strokeStyle = '#ccc';
+      x.lineWidth = 0.8;
       x.stroke();
 
-      // Diamond pip in center
-      x.fillStyle = goldLight;
+      // Diode pip — LED shape (dome + base + leads)
+      x.shadowColor = red;
       x.shadowBlur = 6;
+      var cx = 24, cy = 23;
+
+      // Glow
+      x.fillStyle = 'rgba(229, 57, 53, 0.25)';
       x.beginPath();
-      x.moveTo(24, 14);
-      x.lineTo(31, 24);
-      x.lineTo(24, 34);
-      x.lineTo(17, 24);
+      x.arc(cx, cy - 2, 8, 0, Math.PI * 2);
+      x.fill();
+
+      // LED dome
+      x.fillStyle = red;
+      x.beginPath();
+      x.arc(cx, cy - 2, 5, Math.PI, 0);
+      x.lineTo(cx + 5, cy + 1);
+      x.lineTo(cx - 5, cy + 1);
       x.closePath();
       x.fill();
 
-      // Small rank "10" top-left
-      x.shadowBlur = 2;
+      // Highlight
+      x.fillStyle = redLight;
+      x.beginPath();
+      x.arc(cx - 1.5, cy - 4, 1.8, 0, Math.PI * 2);
+      x.fill();
+
+      // Base
+      x.fillStyle = '#888';
+      x.fillRect(cx - 5, cy + 1, 10, 2.5);
+
+      // Leads
+      x.strokeStyle = '#666';
+      x.lineWidth = 1;
+      x.beginPath();
+      x.moveTo(cx - 2, cy + 3.5);
+      x.lineTo(cx - 2, cy + 8);
+      x.moveTo(cx + 2, cy + 3.5);
+      x.lineTo(cx + 2, cy + 8);
+      x.stroke();
+
+      // Rank "10" top-left
+      x.shadowBlur = 0;
       x.font = 'bold 7px sans-serif';
-      x.fillStyle = gold;
+      x.fillStyle = red;
       x.fillText('10', 12, 12);
     })();
   </script>
