@@ -547,10 +547,16 @@ var UI = (function () {
     hud.style.paddingRight = (size.w - rightEdge) + 'px';
     hud.style.height = layout.hudH + 'px';
 
-    // Dynamic font sizing based on layout scale and available space
-    var labelSize = Math.max(0.55, Math.min(1.125, layout.scale * 1.1));
-    var valueSize = labelSize * 1.12;
-    var btnSize = Math.max(0.55, Math.min(1.125, layout.scale * 1.05));
+    // Dynamic font sizing: use the pixel gap between stock and waste left edges
+    // to ensure "Moves: ###" and "Stock: ###" never overlap
+    var movesLeftPx = layout.stockX - layout.cw / 2;
+    var stockLeftPx = layout.wasteX - layout.cw / 2;
+    var slotWidth = stockLeftPx - movesLeftPx; // px available for "Moves: ###"
+    // "MOVES: 999" is ~10 characters in Cinzel uppercase; estimate ~0.7em per char
+    var maxLabelRem = slotWidth / (10 * 0.7 * 16); // convert px to rem
+    var labelSize = Math.max(0.5, Math.min(1.125, layout.scale * 1.0, maxLabelRem));
+    var valueSize = labelSize * 1.1;
+    var btnSize = Math.max(0.5, Math.min(1.0, labelSize));
 
     var labels = hud.querySelectorAll('.hud-label');
     for (var i = 0; i < labels.length; i++) {
@@ -569,14 +575,25 @@ var UI = (function () {
     var movesItem = document.getElementById('hud-item-moves');
     if (movesItem) {
       movesItem.style.position = 'absolute';
-      movesItem.style.left = (layout.stockX - layout.cw / 2) + 'px';
+      movesItem.style.left = movesLeftPx + 'px';
     }
 
     // Align "Stock:" left edge to active pile left edge
     var stockItem = document.getElementById('hud-item-stock');
     if (stockItem) {
       stockItem.style.position = 'absolute';
-      stockItem.style.left = (layout.wasteX - layout.cw / 2) + 'px';
+      stockItem.style.left = stockLeftPx + 'px';
+    }
+
+    // Position button group: right-aligned to last foundation right edge
+    var hudGroups = hud.querySelectorAll('.hud-group');
+    if (hudGroups.length > 1) {
+      var btnGroup = hudGroups[1];
+      btnGroup.style.position = 'absolute';
+      btnGroup.style.right = (size.w - rightEdge) + 'px';
+      // Tighten gap on narrow screens
+      var btnGap = Math.max(0.4, Math.min(1.8, slotWidth / 80));
+      btnGroup.style.gap = btnGap + 'em';
     }
 
     // Position dev win button between stock pile and first tableau column
