@@ -375,8 +375,10 @@ var Renderer = (function () {
     // Beam colors from active scheme
     var pScheme = PRISM_SCHEMES[activePrismScheme];
     var inColors = pScheme.beamColors;
-    // Beam widths: middle & bottom beams bolder
-    var beamWidths = [beamW, beamW * 1.4, beamW * 1.3];
+    // Beam widths: uniform for all 3 incoming beams and single outgoing beam
+    var beamWidths = [beamW, beamW, beamW];
+    // Broad outgoing beam keeps original bolder widths for its colored borders
+    var broadBorderWidths = [beamW * 1.4, beamW * 1.4, beamW * 1.3];
 
     // Outgoing beam Y positions (red=-beamW, green=0, blue=+beamW)
     // Red top edge at convY - beamW - beamW/2 = convY - 1.5*beamW
@@ -458,8 +460,8 @@ var Renderer = (function () {
     // --- Beams drawn ON TOP of prism body ---
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
-    // For placeholder (dimGlow), shorten beams so they stop before convergence point
-    var inEndX = dimGlow ? convX - 3 * s : convX;
+    // For placeholder (dimGlow), shorten beams so they stop at edge of opaque core circle
+    var inEndX = dimGlow ? convX - 2 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     for (var bi = 0; bi < 3; bi++) {
@@ -476,16 +478,16 @@ var Renderer = (function () {
     c.restore();
 
     // Outgoing beam(s) on right side
-    // For placeholder (dimGlow), start outgoing beams away from convergence
-    var outStartX = dimGlow ? convX + 3 * s : convX;
+    // For placeholder (dimGlow), start outgoing beams at edge of opaque core circle
+    var outStartX = dimGlow ? convX + 2 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     if (activePrismScheme === 'broad') {
-      // Multi: wide merged white beam with colored borders
-      var outTopY = outYs[0] - beamWidths[0] / 2;
-      var outBotY = outYs[2] + beamWidths[2] / 2;
-      var halfRedW = beamWidths[0] / 2;
-      var halfBlueW = beamWidths[2] / 2;
+      // Multi: wide merged white beam with colored borders (uses original bolder widths)
+      var outTopY = outYs[0] - broadBorderWidths[0] / 2;
+      var outBotY = outYs[2] + broadBorderWidths[2] / 2;
+      var halfRedW = broadBorderWidths[0] / 2;
+      var halfBlueW = broadBorderWidths[2] / 2;
       c.beginPath();
       c.rect(outStartX, outTopY, outEndX - outStartX, outBotY - outTopY);
       c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.4)' : '#ffffff';
