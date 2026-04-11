@@ -1174,17 +1174,20 @@ var Renderer = (function () {
   // 3 = triangle: 1 top center, 2 bottom row
   // 10 = top 5 offset right, bottom 5 offset left (for wider "10" text)
   // Standard layouts for text-based suits (clubs)
+  // Classic pip layouts — designed for 20px pips in 42×64 area
+  // Top rows at y=0.12, bottom rows at y=0.88 (consistent edges across all ranks)
+  // X columns at 0.2/0.8 for 2-col, 0.5 for center
   var PIP_LAYOUTS = {
     1:  [[0.5, 0.5, false]],
-    2:  [[0.5, 0.2, false], [0.5, 0.8, true]],
-    3:  [[0.5, 0.2, false], [0.5, 0.5, false], [0.5, 0.8, true]],
-    4:  [[0.3, 0.2, false], [0.7, 0.2, false], [0.3, 0.8, true], [0.7, 0.8, true]],
-    5:  [[0.3, 0.2, false], [0.7, 0.2, false], [0.5, 0.5, false], [0.3, 0.8, true], [0.7, 0.8, true]],
-    6:  [[0.3, 0.2, false], [0.7, 0.2, false], [0.3, 0.5, false], [0.7, 0.5, false], [0.3, 0.8, true], [0.7, 0.8, true]],
-    7:  [[0.3, 0.2, false], [0.7, 0.2, false], [0.3, 0.5, false], [0.7, 0.5, false], [0.5, 0.35, false], [0.3, 0.8, true], [0.7, 0.8, true]],
-    8:  [[0.3, 0.2, false], [0.7, 0.2, false], [0.3, 0.5, false], [0.7, 0.5, false], [0.5, 0.35, false], [0.5, 0.65, true], [0.3, 0.8, true], [0.7, 0.8, true]],
-    9:  [[0.3, 0.18, false], [0.7, 0.18, false], [0.3, 0.39, false], [0.7, 0.39, false], [0.5, 0.5, false], [0.3, 0.61, true], [0.7, 0.61, true], [0.3, 0.82, true], [0.7, 0.82, true]],
-    10: [[0.3, 0.18, false], [0.7, 0.18, false], [0.5, 0.28, false], [0.3, 0.39, false], [0.7, 0.39, false], [0.3, 0.61, true], [0.7, 0.61, true], [0.5, 0.72, true], [0.3, 0.82, true], [0.7, 0.82, true]]
+    2:  [[0.5, 0.12, false], [0.5, 0.88, true]],
+    3:  [[0.5, 0.12, false], [0.5, 0.5, false], [0.5, 0.88, true]],
+    4:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    5:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.5, 0.5, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    6:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    7:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.5, 0.31, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    8:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.5, 0.31, false], [0.5, 0.69, true], [0.2, 0.88, true], [0.8, 0.88, true]],
+    9:  [[0.2, 0.08, false], [0.8, 0.08, false], [0.2, 0.34, false], [0.8, 0.34, false], [0.5, 0.5, false], [0.2, 0.66, true], [0.8, 0.66, true], [0.2, 0.92, true], [0.8, 0.92, true]],
+    10: [[0.2, 0.08, false], [0.8, 0.08, false], [0.5, 0.21, false], [0.2, 0.34, false], [0.8, 0.34, false], [0.2, 0.66, true], [0.8, 0.66, true], [0.5, 0.79, true], [0.2, 0.92, true], [0.8, 0.92, true]]
   };
 
   // Custom pip layouts for laser suits (drawn symbols need more room)
@@ -1493,10 +1496,10 @@ var Renderer = (function () {
     c.restore();
 
     // All face card ranks positioned at the same vertical center
-    // Q's descender tail hangs below naturally — we center on the "O" body
+    // Q's descender tail hangs below — textBaseline 'middle' includes tail,
+    // so the O-body sits too high. Push Q DOWN to align O-body with A/J/K.
     var rankCenterY = cy - 4;
-    // For Q in Cinzel, the baseline 'middle' includes the tail, so shift up to align O-body with A/J/K
-    var qDescenderOffset = (rank === 'Q') ? -3 : 0;
+    var qDescenderOffset = (rank === 'Q') ? 4 : 0;
     var rankY = rankCenterY + qDescenderOffset;
 
     c.save();
