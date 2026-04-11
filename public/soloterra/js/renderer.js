@@ -460,25 +460,13 @@ var Renderer = (function () {
     // --- Beams drawn ON TOP of prism body ---
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
-    // For placeholder (dimGlow), shorten each beam so it stops at the edge of the opaque core circle
-    var coreR = 2.4 * s;
+    // For placeholder (dimGlow), shorten beams so they stop at edge of opaque core circle
+    var inEndX = dimGlow ? convX - 2.4 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     for (var bi = 0; bi < 3; bi++) {
-      var endXFull = convX;
-      var endYFull = outYs[bi];
-      if (dimGlow) {
-        // Calculate beam direction and stop at coreR distance from convergence
-        var dx = endXFull - inStartX;
-        var dy = endYFull - inYs[bi];
-        var bLen = Math.sqrt(dx * dx + dy * dy);
-        var clipT = (bLen - coreR) / bLen;
-        var inEndX = inStartX + dx * clipT;
-        var inEndY = inYs[bi] + dy * clipT;
-      } else {
-        var inEndX = endXFull;
-        var inEndY = endYFull;
-      }
+      var t = dimGlow ? (inEndX - inStartX) / (convX - inStartX) : 1;
+      var inEndY = inYs[bi] + t * (outYs[bi] - inYs[bi]);
       c.beginPath();
       c.moveTo(inStartX, inYs[bi]);
       c.lineTo(inEndX, inEndY);
@@ -491,7 +479,7 @@ var Renderer = (function () {
 
     // Outgoing beam(s) on right side
     // For placeholder (dimGlow), start outgoing beams at edge of opaque core circle
-    var outStartX = dimGlow ? convX + coreR : convX;
+    var outStartX = dimGlow ? convX + 2.4 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     if (activePrismScheme === 'broad') {
@@ -520,13 +508,6 @@ var Renderer = (function () {
       c.stroke();
     } else {
       // Warm/Cool: single output beam matching the middle input beam
-      // Rectangular glow behind the beam
-      var glowH = beamW * 3;
-      c.beginPath();
-      c.rect(outStartX, convY - glowH / 2, outEndX - outStartX, glowH);
-      c.fillStyle = 'rgba(255, 255, 255, 0.35)';
-      c.fill();
-      // Main beam
       c.beginPath();
       c.moveTo(outStartX, convY);
       c.lineTo(outEndX, convY);
@@ -1794,15 +1775,15 @@ var Renderer = (function () {
       } else if (isCustomSuit(suit) && suit === 'hearts') {
         c.save();
         c.globalAlpha = 0.6;
-        drawPrismPip(c, CARD_W / 2, CARD_H / 2 - 2, phPipSize, false, true);
+        drawPrismPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false, true);
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'spades') {
         c.save();
         c.globalAlpha = 0.45;
         if (activeBladeStyle === 'sai') {
-          drawSaiPip(c, CARD_W / 2, CARD_H / 2 - 2, phPipSize, false);
+          drawSaiPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         } else {
-          drawBladePip(c, CARD_W / 2, CARD_H / 2 - 2, phPipSize, false);
+          drawBladePip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         }
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'clubs') {
