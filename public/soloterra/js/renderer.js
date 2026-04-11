@@ -460,7 +460,7 @@ var Renderer = (function () {
     // --- Beams drawn ON TOP of prism body ---
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
-    // For placeholder (dimGlow), shorten each beam to stop at edge of opaque core circle (by distance)
+    // For placeholder (dimGlow), extend each beam until it touches the opaque core circle
     var coreR = 2.4 * s;
     c.save();
     c.globalAlpha = 0.85;
@@ -468,12 +468,22 @@ var Renderer = (function () {
       var beamEndX = convX;
       var beamEndY = outYs[bi];
       if (dimGlow) {
-        var bdx = beamEndX - inStartX;
-        var bdy = beamEndY - inYs[bi];
-        var bLen = Math.sqrt(bdx * bdx + bdy * bdy);
-        var clipT = (bLen - coreR) / bLen;
-        beamEndX = inStartX + bdx * clipT;
-        beamEndY = inYs[bi] + bdy * clipT;
+        // Find where the beam line intersects the core circle centered at (convX, convY)
+        // Beam goes from (inStartX, inYs[bi]) toward (convX, outYs[bi])
+        // Parameterize: P(t) = start + t*(end-start), find t where |P(t) - center|^2 = coreR^2
+        var dx = beamEndX - inStartX;
+        var dy = beamEndY - inYs[bi];
+        var fx = inStartX - convX;
+        var fy = inYs[bi] - convY;
+        var a = dx * dx + dy * dy;
+        var b = 2 * (fx * dx + fy * dy);
+        var cc = fx * fx + fy * fy - coreR * coreR;
+        var disc = b * b - 4 * a * cc;
+        if (disc >= 0) {
+          var t = (-b - Math.sqrt(disc)) / (2 * a);
+          beamEndX = inStartX + dx * t;
+          beamEndY = inYs[bi] + dy * t;
+        }
       }
       c.beginPath();
       c.moveTo(inStartX, inYs[bi]);
@@ -571,23 +581,24 @@ var Renderer = (function () {
     c.arc(prismOX, topY + prismOY + 2 * s, 3 * s, 0, Math.PI * 2);
     c.fill();
 
-    // Star dot at exit ray tip (colored to match output beam)
-    var starColor = activePrismScheme === 'broad' ? '#ffffff' : inColors[1];
-    var starX = outEndX;
-    var starY = convY;
-    var starR = 1.2 * s;
-    var starGlow = c.createRadialGradient(starX, starY, 0, starX, starY, starR * 3);
-    starGlow.addColorStop(0, starColor);
-    starGlow.addColorStop(0.3, starColor);
-    starGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    c.fillStyle = starGlow;
-    c.beginPath();
-    c.arc(starX, starY, starR * 3, 0, Math.PI * 2);
-    c.fill();
-    c.fillStyle = '#ffffff';
-    c.beginPath();
-    c.arc(starX, starY, starR * 0.5, 0, Math.PI * 2);
-    c.fill();
+    // Flare rays at exit beam tip (4 small rays fanning out, 2 per side)
+    var flareColor = activePrismScheme === 'broad' ? '#ffffff' : inColors[1];
+    var flareX = outEndX;
+    var flareY = convY;
+    var flareLen = 3.5 * s;
+    var flareAngles = [-0.45, -0.2, 0.2, 0.45]; // radians from horizontal
+    c.save();
+    c.globalAlpha = 0.7;
+    c.strokeStyle = flareColor;
+    c.lineWidth = 0.6 * s;
+    c.lineCap = 'round';
+    for (var fi = 0; fi < flareAngles.length; fi++) {
+      c.beginPath();
+      c.moveTo(flareX, flareY);
+      c.lineTo(flareX + Math.cos(flareAngles[fi]) * flareLen, flareY + Math.sin(flareAngles[fi]) * flareLen);
+      c.stroke();
+    }
+    c.restore();
 
     // Bottom edge subtle highlight line
     c.beginPath();
@@ -1204,23 +1215,25 @@ var Renderer = (function () {
       c.lineCap = 'butt';
       c.stroke();
     }
-    // Star dot at exit ray tip (colored to match output beam)
-    var starColor = cScheme.broadOutput ? '#ffffff' : cScheme.outputColor;
-    var starX = rectOX;
-    var starY = outTopY;
-    var starR = 1.2 * s;
-    var starGlow = c.createRadialGradient(starX, starY, 0, starX, starY, starR * 3);
-    starGlow.addColorStop(0, starColor);
-    starGlow.addColorStop(0.3, starColor);
-    starGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    c.fillStyle = starGlow;
-    c.beginPath();
-    c.arc(starX, starY, starR * 3, 0, Math.PI * 2);
-    c.fill();
-    c.fillStyle = '#ffffff';
-    c.beginPath();
-    c.arc(starX, starY, starR * 0.5, 0, Math.PI * 2);
-    c.fill();
+    // Flare rays at exit beam tip (4 small rays fanning out, 2 per side)
+    // Combiner beam goes upward, so flare angles are relative to up (-PI/2)
+    var flareColor = cScheme.broadOutput ? '#ffffff' : cScheme.outputColor;
+    var flareX = rectOX;
+    var flareY = outTopY;
+    var flareLen = 3.5 * s;
+    var flareAngles = [-Math.PI / 2 - 0.45, -Math.PI / 2 - 0.2, -Math.PI / 2 + 0.2, -Math.PI / 2 + 0.45];
+    c.save();
+    c.globalAlpha = 0.7;
+    c.strokeStyle = flareColor;
+    c.lineWidth = 0.6 * s;
+    c.lineCap = 'round';
+    for (var fi = 0; fi < flareAngles.length; fi++) {
+      c.beginPath();
+      c.moveTo(flareX, flareY);
+      c.lineTo(flareX + Math.cos(flareAngles[fi]) * flareLen, flareY + Math.sin(flareAngles[fi]) * flareLen);
+      c.stroke();
+    }
+    c.restore();
 
     c.restore();
 
@@ -1845,7 +1858,7 @@ var Renderer = (function () {
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'clubs') {
         c.save();
-        c.globalAlpha = 0.45;
+        c.globalAlpha = 0.6;
         drawCombinerPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false, true);
         c.restore();
       } else {
