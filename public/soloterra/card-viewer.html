@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<title>SoloTerra - Card Reference Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #d4a017;
+    margin-bottom: 10px;
+    font-size: 2rem;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    margin-bottom: 30px;
+    font-size: 0.9rem;
+  }
+  .section-header {
+    font-size: 1.6rem;
+    color: #d4a017;
+    margin: 30px 0 15px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #444;
+    text-align: center;
+  }
+  .suit-section {
+    margin-bottom: 20px;
+  }
+  .suit-title {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #333;
+  }
+  .suit-title.clubs { color: #999; }
+  .suit-title.spades { color: #bbb; }
+  .suit-title.spades-blue { color: #1565C0; }
+  .suit-title.hearts { color: #1B5E20; }
+  .suit-title.diamonds { color: #1565C0; }
+  .suit-title.hearts-warm { color: #b71c1c; }
+  .suit-title.hearts-cool { color: #1565C0; }
+  .suit-title.diamonds-red { color: #b71c1c; }
+  .suit-title.classic { color: #c41e1e; }
+  .card-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    overflow-x: auto;
+  }
+  .card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .card-label {
+    font-size: 0.6rem;
+    color: #888;
+  }
+  canvas.card-canvas {
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+<h1>SoloTerra Card Reference</h1>
+<p class="subtitle">All 14 card faces per suit, rendered at 2x scale. All suit style variants shown.</p>
+<div id="viewer"></div>
+
+<script src="js/textures.js?v=10"></script>
+<script src="js/cards.js?v=10"></script>
+<script src="js/game.js?v=10"></script>
+<script src="js/renderer.js?v=10"></script>
+<script>
+(function() {
+  'use strict';
+
+  var ALL_RANKS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'A', 'J', 'Q', 'K'];
+  var SUITS = ['diamonds', 'hearts', 'spades', 'clubs'];
+  var SUIT_NAMES = {
+    diamonds: 'Diodes (Diamonds)',
+    hearts: 'Prisms (Hearts)',
+    spades: 'Blades (Spades)',
+    clubs: 'Combiners (Clubs)'
+  };
+
+  var viewer = document.getElementById('viewer');
+
+  function renderSuitRow(parent, suit, ranks) {
+    var row = document.createElement('div');
+    row.className = 'card-row';
+    for (var ri = 0; ri < ranks.length; ri++) {
+      var rank = ranks[ri];
+      var container = document.createElement('div');
+      container.className = 'card-container';
+      var cardCanvas = Renderer._renderCard(rank, suit);
+      cardCanvas.className = 'card-canvas';
+      container.appendChild(cardCanvas);
+      var label = document.createElement('div');
+      label.className = 'card-label';
+      label.textContent = rank;
+      container.appendChild(label);
+      row.appendChild(container);
+    }
+    parent.appendChild(row);
+  }
+
+  function addSectionHeader(text) {
+    var h = document.createElement('h2');
+    h.className = 'section-header';
+    h.textContent = text;
+    viewer.appendChild(h);
+  }
+
+  function addSuitSection(title, cls, suit) {
+    var section = document.createElement('div');
+    section.className = 'suit-section';
+    var titleEl = document.createElement('h3');
+    titleEl.className = 'suit-title ' + (cls || '');
+    titleEl.textContent = title;
+    section.appendChild(titleEl);
+    renderSuitRow(section, suit, ALL_RANKS);
+    viewer.appendChild(section);
+  }
+
+  // Force-load Cinzel font variants before rendering (document.fonts.ready
+  // can resolve early if no DOM element references the font yet)
+  Promise.all([
+    document.fonts.load('bold 28px Cinzel'),
+    document.fonts.load('900 28px Cinzel'),
+    document.fonts.load('bold 11px Cinzel')
+  ]).then(function() {
+    // ================================
+    // LASER SUITS (Default: Red Diodes, Red Prisms, Black Blades, Black Combiners)
+    // ================================
+    addSectionHeader('Laser Suits (Default)');
+    Renderer.setDiodeScheme('blue');
+    addSuitSection('Diodes — Blue (default)', 'diamonds-blue', 'diamonds');
+    addSuitSection('Prisms — Red (default)', 'hearts-red', 'hearts');
+    addSuitSection('Blades — Sai (default)', 'spades', 'spades');
+    addSuitSection('Combiners — Black (default)', 'clubs', 'clubs');
+
+    // ================================
+    // DIODE SKINS
+    // ================================
+    addSectionHeader('Diode Skins');
+    Renderer.setDiodeScheme('red');
+    addSuitSection('Red Diodes', 'diamonds', 'diamonds');
+    Renderer.setDiodeScheme('orange');
+    addSuitSection('Orange Diodes', 'diamonds', 'diamonds');
+    Renderer.setDiodeScheme('green');
+    addSuitSection('Green Diodes', 'diamonds', 'diamonds');
+    Renderer.setDiodeScheme('blue');
+
+    // ================================
+    // PRISM SKINS
+    // ================================
+    addSectionHeader('Prism Skins');
+    Renderer.setPrismScheme('blue');
+    addSuitSection('Blue Prisms', 'hearts', 'hearts');
+    Renderer.setPrismScheme('warm');
+    addSuitSection('Warm Prisms (red/orange/gold)', 'hearts', 'hearts');
+    Renderer.setPrismScheme('cool');
+    addSuitSection('Cool Prisms (blue/indigo/violet)', 'hearts', 'hearts');
+    Renderer.setPrismScheme('broad');
+    addSuitSection('Broad Prisms (RGB)', 'hearts', 'hearts');
+    Renderer.setPrismScheme('red');
+
+    // ================================
+    // SWORD STYLE (blade alternate)
+    // ================================
+    addSectionHeader('Sword Style (Blade Alternate)');
+    Renderer.setBladeStyle('blade');
+    addSuitSection('Swords — Black', 'spades', 'spades');
+    Renderer.setBladeScheme('red');
+    addSuitSection('Red Swords', 'spades', 'spades');
+    Renderer.setBladeScheme('blue');
+    addSuitSection('Blue Swords', 'spades', 'spades');
+    Renderer.setBladeScheme('black');
+
+    // ================================
+    // SAI SKINS
+    // ================================
+    addSectionHeader('Sai Skins');
+    Renderer.setBladeStyle('sai');
+    Renderer.setBladeScheme('red');
+    addSuitSection('Red Sais', 'spades', 'spades');
+    Renderer.setBladeScheme('blue');
+    addSuitSection('Blue Sais', 'spades', 'spades');
+    Renderer.setBladeScheme('black');
+
+    // ================================
+    // COMBINER SKINS
+    // ================================
+    addSectionHeader('Combiner Skins');
+    Renderer.setCombinerScheme('red');
+    addSuitSection('Red Combiners', 'clubs', 'clubs');
+    Renderer.setCombinerScheme('blue');
+    addSuitSection('Blue Combiners', 'clubs', 'clubs');
+    Renderer.setCombinerScheme('warm');
+    addSuitSection('Warm Combiners', 'clubs', 'clubs');
+    Renderer.setCombinerScheme('cool');
+    addSuitSection('Cool Combiners', 'clubs', 'clubs');
+    Renderer.setCombinerScheme('broad');
+    addSuitSection('Broad Combiners (red/white/blue)', 'clubs', 'clubs');
+    Renderer.setCombinerScheme('black');
+
+    // ================================
+    // CLASSIC SUITS
+    // ================================
+    addSectionHeader('Classic Suits');
+    Renderer.setSuitSkin('diamonds', 'classic');
+    Renderer.setSuitSkin('hearts', 'classic');
+    Renderer.setSuitSkin('spades', 'classic');
+    Renderer.setSuitSkin('clubs', 'classic');
+    addSuitSection('Classic Diamonds', 'classic', 'diamonds');
+    addSuitSection('Classic Hearts', 'classic', 'hearts');
+    addSuitSection('Classic Spades', 'classic', 'spades');
+    addSuitSection('Classic Clubs', 'clubs', 'clubs');
+
+    // Reset back to laser defaults
+    Renderer.setSuitSkin('diamonds', 'laser');
+    Renderer.setSuitSkin('hearts', 'laser');
+    Renderer.setSuitSkin('spades', 'laser');
+    Renderer.setSuitSkin('clubs', 'laser');
+  });
+})();
+</script>
+</body>
+</html>
