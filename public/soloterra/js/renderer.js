@@ -259,8 +259,14 @@ var Renderer = (function () {
     var bodyW = 6.84 * s;
     var bodyH = 11 * s;
     var domeR = bodyW;
-    var bodyTop = -bodyH * 0.35;
-    var bodyBot = bodyH * 0.35;
+    var rawBodyTop = -bodyH * 0.35;
+    var rawBodyBot = bodyH * 0.35;
+    var rawLegBot = rawBodyBot + 1.5 * s + 4 * s + 1 * s; // legTop + legLen + extra
+    var rawDomeTop = rawBodyTop - domeR;
+    var centerOffset = (rawDomeTop + rawLegBot) / 2;
+    c.translate(0, -centerOffset);
+    var bodyTop = rawBodyTop;
+    var bodyBot = rawBodyBot;
 
     // Outer glow
     var glowGrad = c.createRadialGradient(0, bodyTop - 1 * s, 1 * s, 0, bodyTop, domeR * 1.6);
@@ -564,7 +570,13 @@ var Renderer = (function () {
     var gripHW = 1.37 * s;    // grip half-width (reduced 15%)
     var gripLen = 7 * s;      // grip length
 
-    // Y positions (blade top is negative, handle bottom is positive)
+    // Center the sword vertically: shift so visual center is at y=0
+    var rawTipTop = -bladeLen - tipLen + 2 * s;
+    var rawGripBot = 2 * s + guardH + gripLen;
+    var centerOffset = (rawTipTop + rawGripBot) / 2;
+    c.translate(0, -centerOffset);
+
+    // Y positions (original coordinates, centering handled by translate)
     var tipTop = -bladeLen - tipLen + 2 * s;
     var bladeTop = -bladeLen + 2 * s;
     var bladeBot = 2 * s;     // where blade meets crossguard
@@ -770,6 +782,12 @@ var Renderer = (function () {
     var gripHW = 1.54 * s;       // grip half-width (reduced 15%)
     var gripLen = 7 * s;         // grip length
     var gripTop = yokeY + 1 * s;
+
+    // Center the sai vertically: shift so visual center is at y=0
+    var rawTipTop = -prongLen / 2 + 2 * s;
+    var rawGripBot = gripTop + gripLen;
+    var centerOffset = (rawTipTop + rawGripBot) / 2;
+    c.translate(0, -centerOffset);
 
     // Y positions
     var tipTop = -prongLen / 2 + 2 * s;
@@ -1318,16 +1336,20 @@ var Renderer = (function () {
     var color = getSuitColor(suit);
     var sym = SUIT_SYM[suit];
     var isCustom = isCustomSuit(suit);
+    var numericRank = parseInt(rank);
+    var isOne = (numericRank === 1);
 
     // Corner insets (symmetric from card edges)
-    var cornerX = 10;
-    var rankY = 5;   // distance from edge to top/bottom of rank text
-    var symY = 17;   // distance from edge to top/bottom of suit symbol
+    var cornerX = isOne ? 14 : 10;
+    var rankY = isOne ? 6 : 5;   // distance from edge to top/bottom of rank text
+    var symY = isOne ? 22 : 17;  // distance from edge to top/bottom of suit symbol
 
     // Use Georgia for numeric ranks (Cinzel "1" looks like capital I) and for J & K
-    var isNumeric = !isNaN(parseInt(rank));
+    var isNumeric = !isNaN(numericRank);
     var useGeorgia = isNumeric || rank === 'J' || rank === 'K';
-    var rankFont = useGeorgia ? 'bold 11px Georgia, serif' : 'bold 11px Cinzel, Georgia, serif';
+    var rankFontSize = isOne ? 22 : 11;
+    var rankFont = useGeorgia ? 'bold ' + rankFontSize + 'px Georgia, serif' : 'bold ' + rankFontSize + 'px Cinzel, Georgia, serif';
+    var cornerSymSize = isOne ? 20 : 10;
 
     // Top-left corner: rank then suit below
     c.save();
@@ -1339,7 +1361,7 @@ var Renderer = (function () {
     c.fillStyle = color;
     c.fillText(rank, cornerX, rankY);
     if (!isCustom) {
-      c.font = '10px serif';
+      c.font = cornerSymSize + 'px serif';
       c.fillStyle = 'rgba(0,0,0,0.1)';
       c.fillText(sym, cornerX + 0.5, symY + 0.5);
       c.fillStyle = color;
@@ -1357,7 +1379,7 @@ var Renderer = (function () {
     c.fillStyle = color;
     c.fillText(rank, CARD_W - cornerX, CARD_H - rankY);
     if (!isCustom) {
-      c.font = '10px serif';
+      c.font = cornerSymSize + 'px serif';
       c.fillStyle = 'rgba(0,0,0,0.1)';
       c.fillText(sym, CARD_W - cornerX + 0.5, CARD_H - symY + 0.5);
       c.fillStyle = color;
@@ -1365,8 +1387,10 @@ var Renderer = (function () {
     }
     c.restore();
 
-    var area = { x: 14, y: 18, w: CARD_W - 28, h: CARD_H - 36 };
-    var numericRank = parseInt(rank);
+    // Pip area — vertically centered with equal top/bottom margins
+    var pipMarginX = 14;
+    var pipMarginY = 18;
+    var area = { x: pipMarginX, y: pipMarginY, w: CARD_W - pipMarginX * 2, h: CARD_H - pipMarginY * 2 };
 
     if (!isNaN(numericRank) && PIP_LAYOUTS[numericRank]) {
       renderPips(c, area, suit, numericRank);
@@ -1384,10 +1408,13 @@ var Renderer = (function () {
     if (!layout) return;
 
     var isCustom = isCustomSuit(suit);
-    var fontSize = 16;     // uniform size for all pip counts
-    var customSize = 16;   // uniform size for all pip counts
-    if (count <= 2) customSize = 32; // 2x size for 1 and 2 cards
+    var fontSize = 20;     // uniform 20px for classic pips (all ranks)
+    var customSize = 16;   // uniform size for laser pip counts 2+
+    if (count === 1) customSize = 32; // 2x size for 1-cards only
     if (suit === 'hearts' && isCustom && count > 2) customSize = 15.2; // prisms 5% smaller for 3+
+
+    // Classic 1-cards get double-sized center pip
+    var classicOneSize = (count === 1) ? 40 : fontSize;
 
     // Use spread-out layouts for custom suits
     if (isCustom && CUSTOM_PIP_LAYOUTS[count]) {
@@ -1412,9 +1439,7 @@ var Renderer = (function () {
 
     c.save();
     if (!isCustom) {
-      // Larger pips for 2-3, smaller for 4+
-      fontSize = count <= 3 ? 20 : 16;
-      c.font = fontSize + 'px serif';
+      c.font = classicOneSize + 'px serif';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
     }
@@ -1438,6 +1463,7 @@ var Renderer = (function () {
         drawCombinerPip(c, px, py, customSize, false);
       } else {
         c.save();
+        if (count !== 1) c.font = fontSize + 'px serif';
         c.translate(px, py);
         c.fillStyle = 'rgba(0,0,0,0.12)';
         c.fillText(sym, 0.6, 0.8);
@@ -1466,6 +1492,13 @@ var Renderer = (function () {
     c.stroke();
     c.restore();
 
+    // All face card ranks positioned at the same vertical center
+    // Q's descender tail hangs below naturally — we center on the "O" body
+    var rankCenterY = cy - 4;
+    // For Q in Cinzel, the baseline 'middle' includes the tail, so shift up to align O-body with A/J/K
+    var qDescenderOffset = (rank === 'Q') ? -3 : 0;
+    var rankY = rankCenterY + qDescenderOffset;
+
     c.save();
     c.textAlign = 'center';
     c.textBaseline = 'middle';
@@ -1473,7 +1506,7 @@ var Renderer = (function () {
     c.font = 'bold 30px serif';
     c.fillStyle = color;
     c.globalAlpha = 0.08;
-    c.fillText(chessSym, cx, rank === 'Q' ? cy - 6 : cy - 2);
+    c.fillText(chessSym, cx, rankY);
     c.globalAlpha = 1;
     c.restore();
 
@@ -1483,8 +1516,6 @@ var Renderer = (function () {
     c.font = faceFont;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    // Q has a long descender in Cinzel — shift it up so the tail doesn't drop too low
-    var rankY = (rank === 'Q') ? cy - 6 : cy - 2;
     c.fillStyle = 'rgba(0,0,0,0.15)';
     c.fillText(rank, cx + 1, rankY + 1);
     var goldGrad = Textures.goldFoilGradient(c, cx - 14, rankY - 14, 28, 28);
@@ -1497,27 +1528,28 @@ var Renderer = (function () {
     c.restore();
 
     // Suit symbol below rank on face cards
+    var suitPipY = rankCenterY + 24;
     if (isCustomSuit(suit) && suit === 'diamonds') {
-      drawDiodePip(c, cx, cy + 22, 14, false);
+      drawDiodePip(c, cx, suitPipY, 14, false);
     } else if (isCustomSuit(suit) && suit === 'hearts') {
-      drawPrismPip(c, cx, cy + 22, 14, false);
+      drawPrismPip(c, cx, suitPipY, 14, false);
     } else if (isCustomSuit(suit) && suit === 'spades') {
       if (activeBladeStyle === 'sai') {
-        drawSaiPip(c, cx, cy + 22, 14, false);
+        drawSaiPip(c, cx, suitPipY, 14, false);
       } else {
-        drawBladePip(c, cx, cy + 22, 14, false);
+        drawBladePip(c, cx, suitPipY, 14, false);
       }
     } else if (isCustomSuit(suit) && suit === 'clubs') {
-      drawCombinerPip(c, cx, cy + 22, 14, false);
+      drawCombinerPip(c, cx, suitPipY, 14, false);
     } else {
       c.save();
       c.font = '18px serif';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillStyle = 'rgba(0,0,0,0.1)';
-      c.fillText(sym, cx + 0.5, cy + 14.5);
+      c.fillText(sym, cx + 0.5, suitPipY + 0.5);
       c.fillStyle = color;
-      c.fillText(sym, cx, cy + 14);
+      c.fillText(sym, cx, suitPipY);
       c.restore();
     }
 
