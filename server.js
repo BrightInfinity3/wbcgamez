@@ -11,14 +11,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ---- SoloTerra Leaderboard API ----
-const LEADERBOARD_FILE = path.join(__dirname, "data", "soloterra-leaderboard.json");
+// Use RAILWAY_VOLUME_MOUNT_PATH if a persistent volume is attached, otherwise fall back to ./data
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "soloterra")
+  : path.join(__dirname, "data");
+const LEADERBOARD_FILE = path.join(DATA_DIR, "soloterra-leaderboard.json");
 const LEADERBOARD_MAX = 60;
 
 // Ensure data directory exists
 function ensureDataDir() {
-  const dir = path.join(__dirname, "data");
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
 }
 
@@ -89,6 +92,10 @@ app.post("/api/soloterra/leaderboard", (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
+// Log data location on startup
+ensureDataDir();
+console.log(`Leaderboard data: ${LEADERBOARD_FILE}`);
 
 app.listen(PORT, () => {
   console.log(`WBC Gamez running on port ${PORT}`);

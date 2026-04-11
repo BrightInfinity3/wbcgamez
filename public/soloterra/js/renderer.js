@@ -2378,8 +2378,8 @@ var Renderer = (function () {
     var margin = Math.min(W * 0.03, 20);
     var gap = Math.min(W * 0.015, 12);
 
-    // HUD height reservation (scales down on small screens)
-    var hudH = Math.min(48, H * 0.06);
+    // HUD height reservation — must fit buttons; min 32px even on tiny screens
+    var hudH = Math.max(32, Math.min(48, H * 0.07));
 
     // Width based on max(7, numCols) columns for consistent sizing
     var layoutCols = Math.max(7, numCols);

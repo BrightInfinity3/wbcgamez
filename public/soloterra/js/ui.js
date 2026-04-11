@@ -567,8 +567,11 @@ var UI = (function () {
       values[j].style.fontSize = valueSize + 'rem';
     }
     var btns = hud.querySelectorAll('.btn-hud');
+    // Scale button padding to fit within HUD height
+    var btnPadV = Math.max(0.1, Math.min(0.3, (layout.hudH - btnSize * 16 * 1.2) / 32));
     for (var b = 0; b < btns.length; b++) {
       btns[b].style.fontSize = btnSize + 'rem';
+      btns[b].style.padding = btnPadV + 'em 0.5em';
     }
 
     // Align "Moves:" left edge to stock pile left edge
