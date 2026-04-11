@@ -10,6 +10,7 @@ var UI = (function () {
   var selection = null; // { source: 'waste'|'tableau', colIndex, cardIndex }
   var gameStarted = false;
   var lastClickTime = 0;
+  var autoFoundationCooldown = 0; // timestamp of last auto-foundation move
   var glowPulse = 0;
 
   // ---- Illegal Move Flash ----
@@ -773,9 +774,9 @@ var UI = (function () {
     var x = e.clientX - rect.left;
     var y = e.clientY - rect.top;
 
-    // Check for double-click
+    // Check for double-click (with cooldown after auto-foundation to prevent chain sends)
     var now = Date.now();
-    var isDoubleClick = (now - lastClickTime) < 350;
+    var isDoubleClick = (now - lastClickTime) < 350 && (now - autoFoundationCooldown) > 400;
     lastClickTime = now;
 
     // Find what was clicked
@@ -826,6 +827,7 @@ var UI = (function () {
 
       if (autoResult) {
         selection = null;
+        autoFoundationCooldown = Date.now();
         updateHUD();
         SaveSystem.saveGame();
         if (Game.isWon()) showResults();

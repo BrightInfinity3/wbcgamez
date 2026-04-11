@@ -544,10 +544,13 @@ var Renderer = (function () {
 
     // Small solid white core for placeholder to fully hide beam ends at convergence
     if (dimGlow) {
+      c.save();
+      c.globalAlpha = 1.0;
       c.fillStyle = '#ffffff';
       c.beginPath();
       c.arc(convX, convY, 2.4 * s, 0, Math.PI * 2);
       c.fill();
+      c.restore();
     }
 
     // Apex highlight (bright point at top)
@@ -1194,10 +1197,13 @@ var Renderer = (function () {
 
     // Small solid white core for placeholder to match prism convergence style
     if (dimGlow) {
+      c.save();
+      c.globalAlpha = 1.0;
       c.fillStyle = '#ffffff';
       c.beginPath();
       c.arc(convX, convY, 2.4 * s, 0, Math.PI * 2);
       c.fill();
+      c.restore();
     }
 
     c.restore();
