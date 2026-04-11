@@ -460,16 +460,24 @@ var Renderer = (function () {
     // --- Beams drawn ON TOP of prism body ---
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
-    // For placeholder (dimGlow), shorten beams so they stop at edge of opaque core circle
-    var inEndX = dimGlow ? convX - 2.4 * s : convX;
+    // For placeholder (dimGlow), shorten each beam to stop at edge of opaque core circle (by distance)
+    var coreR = 2.4 * s;
     c.save();
     c.globalAlpha = 0.85;
     for (var bi = 0; bi < 3; bi++) {
-      var t = dimGlow ? (inEndX - inStartX) / (convX - inStartX) : 1;
-      var inEndY = inYs[bi] + t * (outYs[bi] - inYs[bi]);
+      var beamEndX = convX;
+      var beamEndY = outYs[bi];
+      if (dimGlow) {
+        var bdx = beamEndX - inStartX;
+        var bdy = beamEndY - inYs[bi];
+        var bLen = Math.sqrt(bdx * bdx + bdy * bdy);
+        var clipT = (bLen - coreR) / bLen;
+        beamEndX = inStartX + bdx * clipT;
+        beamEndY = inYs[bi] + bdy * clipT;
+      }
       c.beginPath();
       c.moveTo(inStartX, inYs[bi]);
-      c.lineTo(inEndX, inEndY);
+      c.lineTo(beamEndX, beamEndY);
       c.strokeStyle = inColors[bi];
       c.lineWidth = beamWidths[bi];
       c.lineCap = 'butt';
@@ -479,7 +487,7 @@ var Renderer = (function () {
 
     // Outgoing beam(s) on right side
     // For placeholder (dimGlow), start outgoing beams at edge of opaque core circle
-    var outStartX = dimGlow ? convX + 2.4 * s : convX;
+    var outStartX = dimGlow ? convX + coreR : convX;
     c.save();
     c.globalAlpha = 0.85;
     if (activePrismScheme === 'broad') {
@@ -561,6 +569,24 @@ var Renderer = (function () {
     c.fillStyle = apexGlow;
     c.beginPath();
     c.arc(prismOX, topY + prismOY + 2 * s, 3 * s, 0, Math.PI * 2);
+    c.fill();
+
+    // Star dot at exit ray tip (colored to match output beam)
+    var starColor = activePrismScheme === 'broad' ? '#ffffff' : inColors[1];
+    var starX = outEndX;
+    var starY = convY;
+    var starR = 1.2 * s;
+    var starGlow = c.createRadialGradient(starX, starY, 0, starX, starY, starR * 3);
+    starGlow.addColorStop(0, starColor);
+    starGlow.addColorStop(0.3, starColor);
+    starGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    c.fillStyle = starGlow;
+    c.beginPath();
+    c.arc(starX, starY, starR * 3, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(starX, starY, starR * 0.5, 0, Math.PI * 2);
     c.fill();
 
     // Bottom edge subtle highlight line
@@ -1178,17 +1204,34 @@ var Renderer = (function () {
       c.lineCap = 'butt';
       c.stroke();
     }
+    // Star dot at exit ray tip (colored to match output beam)
+    var starColor = cScheme.broadOutput ? '#ffffff' : cScheme.outputColor;
+    var starX = rectOX;
+    var starY = outTopY;
+    var starR = 1.2 * s;
+    var starGlow = c.createRadialGradient(starX, starY, 0, starX, starY, starR * 3);
+    starGlow.addColorStop(0, starColor);
+    starGlow.addColorStop(0.3, starColor);
+    starGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    c.fillStyle = starGlow;
+    c.beginPath();
+    c.arc(starX, starY, starR * 3, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(starX, starY, starR * 0.5, 0, Math.PI * 2);
+    c.fill();
+
     c.restore();
 
-    // --- White glow at rectangle center ---
-    var glowR = 10.5 * s;
+    // --- White glow at rectangle center (matches prism glow) ---
+    var glowR = 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
     convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.1, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.35, 'rgba(255, 255, 255, 0.86)');
-    convGlow.addColorStop(0.55, 'rgba(240, 248, 255, 0.46)');
-    convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.16)');
+    convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
+    convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
+    convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
+    convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
     convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
     c.fillStyle = convGlow;
     c.beginPath();
