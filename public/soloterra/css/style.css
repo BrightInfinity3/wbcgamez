@@ -515,6 +515,7 @@ html, body {
   width: 100px;
   flex-shrink: 0;
   white-space: nowrap;
+  text-align: right;
 }
 
 .variant-buttons {
