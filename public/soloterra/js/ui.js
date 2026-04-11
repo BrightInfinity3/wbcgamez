@@ -1027,7 +1027,7 @@ var UI = (function () {
       var nameB = skins.spades === 'laser' ? 'Blades' : 'Spades';
       var nameC = skins.clubs === 'laser' ? 'Combiners' : 'Clubs';
       formulaEl.innerHTML =
-        '<span class="formula-line">Saved:&ensp;' + nameP + ' \u00d7 1 &ensp;+&ensp; ' + nameB + ' \u00d7 2 &ensp;+&ensp; ' + nameC + ' \u00d7 3</span>' +
+        '<span class="formula-line">Saved: &ensp;' + nameP + ' \u00d7 1 &ensp;+&ensp; ' + nameB + ' \u00d7 2 &ensp;+&ensp; ' + nameC + ' \u00d7 3</span>' +
         '<span class="formula-line">' + savedP + ' \u00d7 1 &ensp;+&ensp; ' + savedB + ' \u00d7 2 &ensp;+&ensp; ' + savedC + ' \u00d7 3</span>' +
         '<span class="formula-line">' + term1 + ' &ensp;+&ensp; ' + term2 + ' &ensp;+&ensp; ' + term3 + ' &ensp;= &ensp;<span class="formula-result">' + score + '</span></span>';
 
