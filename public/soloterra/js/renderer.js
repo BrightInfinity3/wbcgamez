@@ -1386,7 +1386,8 @@ var Renderer = (function () {
     var isCustom = isCustomSuit(suit);
     var fontSize = 16;     // uniform size for all pip counts
     var customSize = 16;   // uniform size for all pip counts
-    if (suit === 'hearts' && isCustom) customSize = 15.2; // prisms 5% smaller
+    if (count <= 2) customSize = 32; // 2x size for 1 and 2 cards
+    if (suit === 'hearts' && isCustom && count > 2) customSize = 15.2; // prisms 5% smaller for 3+
 
     // Use spread-out layouts for custom suits
     if (isCustom && CUSTOM_PIP_LAYOUTS[count]) {
