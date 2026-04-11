@@ -512,15 +512,15 @@ var Renderer = (function () {
 
     // --- White glow on top of everything (obscures beam merge) ---
     // Larger, brighter glow for placeholder (dimGlow) to fully hide beam ends
-    var glowR = dimGlow ? 14 * s : 7.5 * s;
+    var glowR = dimGlow ? 10 * s : 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
     if (dimGlow) {
       convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.35, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.55, 'rgba(255, 255, 255, 0.95)');
-      convGlow.addColorStop(0.7, 'rgba(255, 255, 255, 0.7)');
-      convGlow.addColorStop(0.85, 'rgba(240, 248, 255, 0.3)');
-      convGlow.addColorStop(1, 'rgba(220, 235, 255, 0)');
+      convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+      convGlow.addColorStop(0.6, 'rgba(240, 248, 255, 0.5)');
+      convGlow.addColorStop(0.8, 'rgba(220, 235, 255, 0.15)');
+      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
     } else {
       convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
       convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
@@ -533,6 +533,14 @@ var Renderer = (function () {
     c.beginPath();
     c.arc(convX, convY, glowR, 0, Math.PI * 2);
     c.fill();
+
+    // Small solid white core for placeholder to fully hide beam ends at convergence
+    if (dimGlow) {
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(convX, convY, 4 * s, 0, Math.PI * 2);
+      c.fill();
+    }
 
     // Apex highlight (bright point at top)
     var apexGlow = c.createRadialGradient(prismOX, topY + prismOY + 2 * s, 0, prismOX, topY + prismOY + 2 * s, 3 * s);
