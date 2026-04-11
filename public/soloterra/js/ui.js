@@ -172,6 +172,16 @@ var UI = (function () {
     canvas.addEventListener('mousemove', onCanvasMouseMove);
     canvas.addEventListener('mouseup', onCanvasMouseUp);
 
+    // Cancel drag if mouse released outside canvas (e.g. at screen edge)
+    window.addEventListener('mouseup', function () {
+      if (isDragging && dragState) {
+        dragState = null;
+        mouseDownPos = null;
+        isDragging = false;
+        wasDragging = true;
+      }
+    });
+
     // Touch support: convert touch events to mouse-like events
     canvas.addEventListener('touchstart', function (e) {
       e.preventDefault();
@@ -1252,10 +1262,10 @@ var UI = (function () {
         hitTargets.push({
           type: 'tableau-empty',
           colIndex: ci,
-          x: colX - layout.cw / 2,
+          x: colX - layout.cw * 1.5 / 2,
           y: layout.tableauStartY - layout.ch / 2,
-          w: layout.cw,
-          h: layout.ch
+          w: layout.cw * 1.5,
+          h: layout.ch * 2
         });
         if (col.length === 0 || dragIdx === 0) continue;
       }
@@ -1296,10 +1306,10 @@ var UI = (function () {
           cardIndex: ri,
           isTop: isLastVisible,
           faceUp: entry.faceUp,
-          x: colX - layout.cw / 2,
+          x: colX - (isLastVisible ? layout.cw * 1.5 : layout.cw) / 2,
           y: cardY - layout.ch / 2,
-          w: layout.cw,
-          h: hitH
+          w: isLastVisible ? layout.cw * 1.5 : layout.cw,
+          h: isLastVisible ? hitH + layout.ch : hitH
         });
       }
     }
