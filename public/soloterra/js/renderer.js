@@ -581,25 +581,6 @@ var Renderer = (function () {
     c.arc(prismOX, topY + prismOY + 2 * s, 3 * s, 0, Math.PI * 2);
     c.fill();
 
-    // Flare rays at exit beam tip (4 small rays fanning out, 2 per side)
-    var flareColor = activePrismScheme === 'broad' ? '#ffffff' : inColors[1];
-    var flareX = outEndX;
-    var flareY = convY;
-    var flareLen = 3.5 * s;
-    var flareAngles = [-0.45, -0.2, 0.2, 0.45]; // radians from horizontal
-    c.save();
-    c.globalAlpha = 0.7;
-    c.strokeStyle = flareColor;
-    c.lineWidth = 0.6 * s;
-    c.lineCap = 'round';
-    for (var fi = 0; fi < flareAngles.length; fi++) {
-      c.beginPath();
-      c.moveTo(flareX, flareY);
-      c.lineTo(flareX + Math.cos(flareAngles[fi]) * flareLen, flareY + Math.sin(flareAngles[fi]) * flareLen);
-      c.stroke();
-    }
-    c.restore();
-
     // Bottom edge subtle highlight line
     c.beginPath();
     c.moveTo(-pw + prismOX + 2 * s, botY + prismOY - 0.5 * s);
@@ -1215,37 +1196,26 @@ var Renderer = (function () {
       c.lineCap = 'butt';
       c.stroke();
     }
-    // Flare rays at exit beam tip (4 small rays fanning out, 2 per side)
-    // Combiner beam goes upward, so flare angles are relative to up (-PI/2)
-    var flareColor = cScheme.broadOutput ? '#ffffff' : cScheme.outputColor;
-    var flareX = rectOX;
-    var flareY = outTopY;
-    var flareLen = 3.5 * s;
-    var flareAngles = [-Math.PI / 2 - 0.45, -Math.PI / 2 - 0.2, -Math.PI / 2 + 0.2, -Math.PI / 2 + 0.45];
-    c.save();
-    c.globalAlpha = 0.7;
-    c.strokeStyle = flareColor;
-    c.lineWidth = 0.6 * s;
-    c.lineCap = 'round';
-    for (var fi = 0; fi < flareAngles.length; fi++) {
-      c.beginPath();
-      c.moveTo(flareX, flareY);
-      c.lineTo(flareX + Math.cos(flareAngles[fi]) * flareLen, flareY + Math.sin(flareAngles[fi]) * flareLen);
-      c.stroke();
-    }
     c.restore();
 
-    c.restore();
-
-    // --- White glow at rectangle center (matches prism glow) ---
-    var glowR = 7.5 * s;
+    // --- White glow at rectangle center (matches prism glow, uses dimGlow variant for placeholder) ---
+    var glowR = dimGlow ? 10 * s : 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
-    convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
-    convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
-    convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    if (dimGlow) {
+      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+      convGlow.addColorStop(0.6, 'rgba(240, 248, 255, 0.5)');
+      convGlow.addColorStop(0.8, 'rgba(220, 235, 255, 0.15)');
+      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    } else {
+      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
+      convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
+      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    }
     c.fillStyle = convGlow;
     c.beginPath();
     c.arc(convX, convY, glowR, 0, Math.PI * 2);

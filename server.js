@@ -88,6 +88,12 @@ app.post("/api/soloterra/leaderboard", (req, res) => {
   res.json({ success: true, leaderboard: sorted.slice(0, LEADERBOARD_MAX) });
 });
 
+// DELETE /api/soloterra/leaderboard — wipe all entries
+app.delete("/api/soloterra/leaderboard", (req, res) => {
+  writeLeaderboard([]);
+  res.json({ success: true, message: "Leaderboard wiped" });
+});
+
 // Fallback to index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
