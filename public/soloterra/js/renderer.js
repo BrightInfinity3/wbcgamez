@@ -511,14 +511,24 @@ var Renderer = (function () {
     c.restore();
 
     // --- White glow on top of everything (obscures beam merge) ---
-    var glowR = 7.5 * s;
+    // Larger, brighter glow for placeholder (dimGlow) to fully hide beam ends
+    var glowR = dimGlow ? 10 * s : 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
-    convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
-    convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
-    convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
-    convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    if (dimGlow) {
+      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+      convGlow.addColorStop(0.6, 'rgba(240, 248, 255, 0.5)');
+      convGlow.addColorStop(0.8, 'rgba(220, 235, 255, 0.15)');
+      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    } else {
+      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
+      convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
+      convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
+      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    }
     c.fillStyle = convGlow;
     c.beginPath();
     c.arc(convX, convY, glowR, 0, Math.PI * 2);
@@ -1677,26 +1687,26 @@ var Renderer = (function () {
     }
     c.restore();
 
-    // Center "Solo" / "Terra" in gold (two lines)
+    // Center "Solo" / "Terra" in gold (two lines, 25% larger)
     c.save();
-    c.font = '900 11px Cinzel, Georgia, serif';
+    c.font = '900 14px Cinzel, Georgia, serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     var midX = CARD_W / 2;
     var midY = CARD_H / 2;
-    var lineH = 13;
+    var lineH = 16;
 
     c.fillStyle = '#d4a849';
     c.globalAlpha = 0.08;
     c.fillText('Solo', midX, midY - lineH / 2);
     c.fillText('Terra', midX, midY + lineH / 2);
-    c.font = '900 12px Cinzel, Georgia, serif';
+    c.font = '900 15px Cinzel, Georgia, serif';
     c.globalAlpha = 0.06;
     c.fillText('Solo', midX, midY - lineH / 2);
     c.fillText('Terra', midX, midY + lineH / 2);
 
-    c.font = '900 11px Cinzel, Georgia, serif';
-    var goldG = Textures.goldFoilGradient(c, midX - 18, midY - 14, 36, 28);
+    c.font = '900 14px Cinzel, Georgia, serif';
+    var goldG = Textures.goldFoilGradient(c, midX - 22, midY - 17, 44, 34);
     c.fillStyle = goldG;
     c.globalAlpha = 0.50;
     c.fillText('Solo', midX, midY - lineH / 2);
