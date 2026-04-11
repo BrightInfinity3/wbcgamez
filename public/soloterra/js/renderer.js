@@ -458,12 +458,16 @@ var Renderer = (function () {
     // --- Beams drawn ON TOP of prism body ---
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
+    // For placeholder (dimGlow), shorten beams so they stop before convergence point
+    var inEndX = dimGlow ? convX - 3 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     for (var bi = 0; bi < 3; bi++) {
+      var t = dimGlow ? (inEndX - inStartX) / (convX - inStartX) : 1;
+      var inEndY = inYs[bi] + t * (outYs[bi] - inYs[bi]);
       c.beginPath();
       c.moveTo(inStartX, inYs[bi]);
-      c.lineTo(convX, outYs[bi]); // each beam arrives at its outgoing Y position
+      c.lineTo(inEndX, inEndY);
       c.strokeStyle = inColors[bi];
       c.lineWidth = beamWidths[bi];
       c.lineCap = 'butt';
@@ -472,6 +476,8 @@ var Renderer = (function () {
     c.restore();
 
     // Outgoing beam(s) on right side
+    // For placeholder (dimGlow), start outgoing beams away from convergence
+    var outStartX = dimGlow ? convX + 3 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     if (activePrismScheme === 'broad') {
@@ -481,18 +487,18 @@ var Renderer = (function () {
       var halfRedW = beamWidths[0] / 2;
       var halfBlueW = beamWidths[2] / 2;
       c.beginPath();
-      c.rect(convX, outTopY, outEndX - convX, outBotY - outTopY);
+      c.rect(outStartX, outTopY, outEndX - outStartX, outBotY - outTopY);
       c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.4)' : '#ffffff';
       c.fill();
       c.beginPath();
-      c.moveTo(convX, outTopY + halfRedW / 2);
+      c.moveTo(outStartX, outTopY + halfRedW / 2);
       c.lineTo(outEndX, outTopY + halfRedW / 2);
       c.strokeStyle = inColors[0];
       c.lineWidth = halfRedW;
       c.lineCap = 'butt';
       c.stroke();
       c.beginPath();
-      c.moveTo(convX, outBotY - halfBlueW / 2);
+      c.moveTo(outStartX, outBotY - halfBlueW / 2);
       c.lineTo(outEndX, outBotY - halfBlueW / 2);
       c.strokeStyle = inColors[2];
       c.lineWidth = halfBlueW;
@@ -501,7 +507,7 @@ var Renderer = (function () {
     } else {
       // Warm/Cool: single output beam matching the middle input beam
       c.beginPath();
-      c.moveTo(convX, convY);
+      c.moveTo(outStartX, convY);
       c.lineTo(outEndX, convY);
       c.strokeStyle = inColors[1]; // middle beam color (orange for warm, indigo for cool)
       c.lineWidth = beamWidths[1];
@@ -538,7 +544,7 @@ var Renderer = (function () {
     if (dimGlow) {
       c.fillStyle = '#ffffff';
       c.beginPath();
-      c.arc(convX, convY, 4 * s, 0, Math.PI * 2);
+      c.arc(convX, convY, 2 * s, 0, Math.PI * 2);
       c.fill();
     }
 
