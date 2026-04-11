@@ -1192,14 +1192,6 @@ var Renderer = (function () {
     c.arc(convX, convY, glowR, 0, Math.PI * 2);
     c.fill();
 
-    // Small solid white core for placeholder to match prism convergence style
-    if (dimGlow) {
-      c.fillStyle = '#ffffff';
-      c.beginPath();
-      c.arc(convX, convY, 2.4 * s, 0, Math.PI * 2);
-      c.fill();
-    }
-
     c.restore();
   }
 
