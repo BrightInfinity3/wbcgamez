@@ -1499,7 +1499,7 @@ var Renderer = (function () {
     // Q's descender tail hangs below — textBaseline 'middle' includes tail,
     // so the O-body sits too high. Push Q DOWN to align O-body with A/J/K.
     var rankCenterY = cy - 4;
-    var qDescenderOffset = (rank === 'Q') ? 4 : 0;
+    var qDescenderOffset = (rank === 'Q') ? 2 : 0;
     var rankY = rankCenterY + qDescenderOffset;
 
     c.save();
@@ -1738,37 +1738,38 @@ var Renderer = (function () {
     c.stroke();
     c.setLineDash([]);
 
-    // Suit symbol in center
+    // Suit symbol in center (2x size for visibility)
     if (suit) {
+      var phPipSize = 48;
       if (isCustomSuit(suit) && suit === 'diamonds') {
         c.save();
         c.globalAlpha = 0.45;
-        drawDiodePip(c, CARD_W / 2, CARD_H / 2, 24, false);
+        drawDiodePip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'hearts') {
         c.save();
         c.globalAlpha = 0.6;
-        drawPrismPip(c, CARD_W / 2, CARD_H / 2, 24, false, true);
+        drawPrismPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false, true);
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'spades') {
         c.save();
         c.globalAlpha = 0.45;
         if (activeBladeStyle === 'sai') {
-          drawSaiPip(c, CARD_W / 2, CARD_H / 2, 24, false);
+          drawSaiPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         } else {
-          drawBladePip(c, CARD_W / 2, CARD_H / 2, 24, false);
+          drawBladePip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         }
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'clubs') {
         c.save();
         c.globalAlpha = 0.45;
-        drawCombinerPip(c, CARD_W / 2, CARD_H / 2, 24, false);
+        drawCombinerPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         c.restore();
       } else {
         var sym = SUIT_SYM[suit];
         var color = getSuitColor(suit);
         c.save();
-        c.font = '28px serif';
+        c.font = '48px serif';
         c.textAlign = 'center';
         c.textBaseline = 'middle';
         c.fillStyle = color;
