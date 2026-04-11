@@ -398,7 +398,7 @@ var Renderer = (function () {
     // Red arrives so its top edge aligns with outgoing red top edge
     // Red outgoing center = convY - beamW, top = convY - beamW - beamW/2
     // So incoming red should arrive at convY - beamW (same center as outgoing)
-    var inSpread = 1.6 * s; // shallower spread between beams at left edge
+    var inSpread = 2.1 * s; // spread between beams at left edge (steeper angle of incidence)
     var inYs = [convY - inSpread * 2.5, convY, convY + inSpread * 2.5];
 
     // --- Draw order: shadow, prism body, beams ON TOP of prism, then white glow on top ---
@@ -461,7 +461,7 @@ var Renderer = (function () {
 
     // Incoming beams (left — R, G, B converging into prism center, shallower angle)
     // For placeholder (dimGlow), shorten beams so they stop at edge of opaque core circle
-    var inEndX = dimGlow ? convX - 2 * s : convX;
+    var inEndX = dimGlow ? convX - 2.4 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     for (var bi = 0; bi < 3; bi++) {
@@ -479,7 +479,7 @@ var Renderer = (function () {
 
     // Outgoing beam(s) on right side
     // For placeholder (dimGlow), start outgoing beams at edge of opaque core circle
-    var outStartX = dimGlow ? convX + 2 * s : convX;
+    var outStartX = dimGlow ? convX + 2.4 * s : convX;
     c.save();
     c.globalAlpha = 0.85;
     if (activePrismScheme === 'broad') {
@@ -546,7 +546,7 @@ var Renderer = (function () {
     if (dimGlow) {
       c.fillStyle = '#ffffff';
       c.beginPath();
-      c.arc(convX, convY, 2 * s, 0, Math.PI * 2);
+      c.arc(convX, convY, 2.4 * s, 0, Math.PI * 2);
       c.fill();
     }
 
