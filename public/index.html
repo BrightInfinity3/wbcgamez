@@ -215,6 +215,10 @@
       transform: scale(1.25);
     }
 
+    .card-icon canvas.soloterra-canvas {
+      transform: scale(1.2);
+    }
+
     .card-header .card-icon {
       margin-bottom: 0;
     }
@@ -414,7 +418,7 @@
       <a href="/soloterra/" class="card soloterra">
         <div class="card-header">
           <div class="card-icon">
-            <canvas id="soloterra-icon" width="48" height="48"></canvas>
+            <canvas id="soloterra-icon" class="soloterra-canvas" width="48" height="48"></canvas>
           </div>
           <h2 class="card-title">SoloTerra</h2>
         </div>
@@ -567,7 +571,7 @@
 
     })();
 
-    // Draw SoloTerra icon — red 10 of diodes card
+    // Draw SoloTerra icon — red 1 of diodes card
     (function() {
       const c = document.getElementById('soloterra-icon');
       const x = c.getContext('2d');
@@ -586,51 +590,58 @@
       x.lineWidth = 0.8;
       x.stroke();
 
-      // Diode pip — LED shape (dome + base + leads)
+      // Diode pip — LED shape scaled up 20%
       x.shadowColor = red;
       x.shadowBlur = 6;
       var cx = 24, cy = 23;
 
-      // Glow
+      // Glow (8 * 1.2 = 9.6)
       x.fillStyle = 'rgba(229, 57, 53, 0.25)';
       x.beginPath();
-      x.arc(cx, cy - 2, 8, 0, Math.PI * 2);
+      x.arc(cx, cy - 2, 9.6, 0, Math.PI * 2);
       x.fill();
 
-      // LED dome
+      // LED dome (5 * 1.2 = 6)
       x.fillStyle = red;
       x.beginPath();
-      x.arc(cx, cy - 2, 5, Math.PI, 0);
-      x.lineTo(cx + 5, cy + 1);
-      x.lineTo(cx - 5, cy + 1);
+      x.arc(cx, cy - 2, 6, Math.PI, 0);
+      x.lineTo(cx + 6, cy + 1.2);
+      x.lineTo(cx - 6, cy + 1.2);
       x.closePath();
       x.fill();
 
-      // Highlight
+      // Highlight (1.8 * 1.2 = 2.16)
       x.fillStyle = redLight;
       x.beginPath();
-      x.arc(cx - 1.5, cy - 4, 1.8, 0, Math.PI * 2);
+      x.arc(cx - 1.8, cy - 4.5, 2.16, 0, Math.PI * 2);
       x.fill();
 
-      // Base
+      // Base (width 10*1.2=12, height 2.5*1.2=3)
       x.fillStyle = '#888';
-      x.fillRect(cx - 5, cy + 1, 10, 2.5);
+      x.fillRect(cx - 6, cy + 1.2, 12, 3);
 
-      // Leads
+      // Leads (spread 2.4 from center, length scaled)
       x.strokeStyle = '#666';
       x.lineWidth = 1;
       x.beginPath();
-      x.moveTo(cx - 2, cy + 3.5);
-      x.lineTo(cx - 2, cy + 8);
-      x.moveTo(cx + 2, cy + 3.5);
-      x.lineTo(cx + 2, cy + 8);
+      x.moveTo(cx - 2.4, cy + 4.2);
+      x.lineTo(cx - 2.4, cy + 9.6);
+      x.moveTo(cx + 2.4, cy + 4.2);
+      x.lineTo(cx + 2.4, cy + 9.6);
       x.stroke();
 
-      // Rank "10" top-left
+      // Rank "1" top-left
       x.shadowBlur = 0;
       x.font = 'bold 7px sans-serif';
       x.fillStyle = red;
-      x.fillText('10', 12, 12);
+      x.fillText('1', 13, 12);
+
+      // Rank "1" bottom-right (upside down)
+      x.save();
+      x.translate(35, 42);
+      x.rotate(Math.PI);
+      x.fillText('1', 0, 0);
+      x.restore();
     })();
   </script>
 </body>
