@@ -192,15 +192,16 @@
     }
 
     .card-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 14px;
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 30px;
+      font-size: 36px;
       line-height: 1;
       margin-bottom: 20px;
+      margin-top: -16px;
       background: var(--card-icon-bg);
       box-shadow: 0 4px 20px var(--card-glow);
       transition: transform 0.35s ease;
@@ -212,11 +213,11 @@
     }
 
     .card-icon canvas.laserman-canvas {
-      transform: scale(1.25);
+      transform: scale(1.55);
     }
 
     .card-icon canvas.soloterra-canvas {
-      transform: scale(1.2);
+      transform: scale(1.5);
     }
 
     .card-header .card-icon {
@@ -628,17 +629,17 @@
       x.fillStyle = '#888';
       x.fillRect(cx - 6, cy + 1.2, 12, 3);
 
-      // Leads — symmetric
+      // Leads — cathode (left, shorter) and anode (right, longer)
       x.strokeStyle = '#666';
       x.lineWidth = 1;
       x.lineCap = 'round';
       x.beginPath();
       x.moveTo(cx - 2.4, cy + 4.2);
-      x.lineTo(cx - 2.4, cy + 9.6);
+      x.lineTo(cx - 2.4, cy + 8);
       x.stroke();
       x.beginPath();
       x.moveTo(cx + 2.4, cy + 4.2);
-      x.lineTo(cx + 2.4, cy + 9.6);
+      x.lineTo(cx + 2.4, cy + 11);
       x.stroke();
 
       // Rank "1" top-left (3px inset from card edge)
