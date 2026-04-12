@@ -600,33 +600,33 @@
       x.roundRect(cLeft, cTop, cW, cH, cR);
       x.stroke();
 
-      // Diode pip — centered, scaled up 20%
+      // Diode pip — shifted down 10% (~2px)
       x.shadowColor = red;
       x.shadowBlur = 6;
-      var cx = 24, cy = 22;
+      var cx = 24, cy = 24;
 
-      // Glow (9.6 * 1.1 = 10.56)
-      x.fillStyle = 'rgba(229, 57, 53, 0.25)';
+      // Glow (50% dimmer: 0.25 → 0.125)
+      x.fillStyle = 'rgba(229, 57, 53, 0.125)';
       x.beginPath();
       x.arc(cx, cy - 2, 10.6, 0, Math.PI * 2);
       x.fill();
 
-      // LED dome (6 * 1.1 = 6.6)
+      // LED dome (6.6 * 1.1 = 7.26)
       x.fillStyle = red;
       x.beginPath();
-      x.arc(cx, cy - 2, 6.6, Math.PI, 0);
-      x.lineTo(cx + 6.6, cy + 1.3);
-      x.lineTo(cx - 6.6, cy + 1.3);
+      x.arc(cx, cy - 2, 7.26, Math.PI, 0);
+      x.lineTo(cx + 7.26, cy + 1.3);
+      x.lineTo(cx - 7.26, cy + 1.3);
       x.closePath();
       x.fill();
 
-      // Highlight (2.16 * 1.1 = 2.38)
+      // Highlight
       x.fillStyle = redLight;
       x.beginPath();
       x.arc(cx - 2, cy - 4.8, 2.38, 0, Math.PI * 2);
       x.fill();
 
-      // Base — centered (width scaled 10%)
+      // Base
       x.fillStyle = '#888';
       x.fillRect(cx - 6.6, cy + 1.3, 13.2, 3);
 
@@ -647,18 +647,38 @@
       x.lineTo(cx + 4.5, cy + 11.5);
       x.stroke();
 
-      // Rank "1" top-left (3px inset from card edge)
+      // Draw "1" with serif base
       x.shadowBlur = 0;
-      x.font = 'bold 7px sans-serif';
       x.fillStyle = red;
-      x.textAlign = 'left';
-      x.textBaseline = 'top';
-      x.fillText('1', cLeft + 2, cTop + 2);
+      x.strokeStyle = red;
+      x.lineCap = 'butt';
+      x.lineJoin = 'round';
 
-      // Rank "1" bottom-right (same inset, right-side up)
-      x.textAlign = 'right';
-      x.textBaseline = 'bottom';
-      x.fillText('1', cLeft + cW - 2, cTop + cH - 2);
+      function drawOne(bx, by) {
+        // Main vertical stroke
+        x.lineWidth = 1.1;
+        x.beginPath();
+        x.moveTo(bx, by);
+        x.lineTo(bx, by + 6.5);
+        x.stroke();
+        // Top-left flag
+        x.beginPath();
+        x.moveTo(bx, by + 0.5);
+        x.lineTo(bx - 2, by + 2);
+        x.stroke();
+        // Bottom base/serif
+        x.lineWidth = 1.1;
+        x.beginPath();
+        x.moveTo(bx - 2, by + 6.5);
+        x.lineTo(bx + 2, by + 6.5);
+        x.stroke();
+      }
+
+      // Rank "1" top-left
+      drawOne(cLeft + 4.5, cTop + 3);
+
+      // Rank "1" bottom-right
+      drawOne(cLeft + cW - 4, cTop + cH - 10.5);
     })();
   </script>
 </body>
