@@ -1054,26 +1054,31 @@ var Renderer = (function () {
     c.restore();
   }
 
-  // ---- Fan Blade pip drawing (V2 — 4 blades, upright, large dark base) ----
+  // ---- Fan Blade pip drawing (V3 — ~160° dark semicircle with 4 blade tips protruding) ----
   function drawFanPip(c, x, y, size, flip) {
     c.save();
     c.translate(x, y);
     if (flip) c.rotate(Math.PI);
 
-    var s = size / 20;
+    var s = (size * 1.5) / 20;   // 50% larger overall
     var bScheme = BLADE_SCHEMES[activeBladeScheme];
 
-    // Fan parameters — 4 blades, upright, spread evenly around top semicircle
+    // Fan parameters
+    var arcR = 2.756 * s;         // radius of the dark arc body (reduced 25% again)
+    var bladeProtrude = 3.0 * s;  // how far blade tips stick out beyond arc
+    var bladeW = 4.68 * s;        // blade width at widest (increased 25% again)
+    var pivotR = 1.8 * s;         // small pivot rivet at bottom
+    var arcDeg = 160;              // degrees of the arc
     var numBlades = 4;
-    var fanR = 9 * s;          // blade length (from hub center to tip)
-    var bladeW = 3.2 * s;      // blade width at widest
-    var hubR = 4.5 * s;        // large dark hub radius (expanded base)
-    var startAngle = -Math.PI * 0.85;  // start from upper-left (~153 deg from right)
-    var sweep = Math.PI * 0.7;         // fan sweep across top (126 degrees)
 
-    // Vertical centering offset
-    var topExtent = -fanR * 0.95;
-    var botExtent = hubR * 0.7;
+    // Arc geometry: 160° centered at top, pivot at bottom
+    var arcRad = arcDeg * Math.PI / 180;
+    var arcStart = -Math.PI / 2 - arcRad / 2;  // start angle (left side)
+    var arcEnd = -Math.PI / 2 + arcRad / 2;    // end angle (right side)
+
+    // Vertical centering: arc top is at -arcR, pivot bottom is at pivotR
+    var topExtent = -arcR - bladeProtrude * 0.6;
+    var botExtent = pivotR;
     var centerY = (topExtent + botExtent) / 2;
     c.translate(0, -centerY);
 
@@ -1082,35 +1087,37 @@ var Renderer = (function () {
       var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
       c.save();
       c.globalAlpha = 0.3;
-      var glowGrad = c.createRadialGradient(0, 0, hubR, 0, 0, fanR * 1.2);
-      glowGrad.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.5)');
-      glowGrad.addColorStop(0.5, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.2)');
+      var glowGrad = c.createRadialGradient(0, 0, arcR * 0.5, 0, 0, (arcR + bladeProtrude) * 1.2);
+      glowGrad.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.4)');
+      glowGrad.addColorStop(0.5, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.15)');
       glowGrad.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
       c.fillStyle = glowGrad;
       c.beginPath();
-      c.arc(0, 0, fanR * 1.2, 0, Math.PI * 2);
+      c.arc(0, 0, (arcR + bladeProtrude) * 1.2, 0, Math.PI * 2);
       c.fill();
       c.restore();
     }
 
-    // Draw each blade — only the portion beyond the hub is visible as steel
+    // --- Draw blade tips (behind the arc body) ---
     for (var bi = 0; bi < numBlades; bi++) {
-      var angle = startAngle + (bi / (numBlades - 1)) * sweep;
+      // Spread blades evenly across the arc
+      var t = (bi + 0.5) / numBlades;
+      var bladeAngle = arcStart + t * arcRad;
 
       c.save();
-      c.rotate(angle);
+      c.rotate(bladeAngle);
 
-      // Blade shape: starts from hub edge, tapers to tip
-      var bladeStart = hubR * 0.65;  // blades start well within the hub (overlap covered)
-      var tipX = fanR;
+      // Blade shape: from inside arc out to tip
+      var bladeStart = arcR * 0.7;
+      var tipX = arcR + bladeProtrude;
       var halfW = bladeW / 2;
       c.beginPath();
       c.moveTo(bladeStart, 0);
-      c.bezierCurveTo(bladeStart + fanR * 0.25, -halfW, fanR * 0.7, -halfW * 0.75, tipX, 0);
-      c.bezierCurveTo(fanR * 0.7, halfW * 0.75, bladeStart + fanR * 0.25, halfW, bladeStart, 0);
+      c.bezierCurveTo(arcR * 0.85, -halfW * 0.9, arcR, -halfW * 0.7, tipX, 0);
+      c.bezierCurveTo(arcR, halfW * 0.7, arcR * 0.85, halfW * 0.9, bladeStart, 0);
       c.closePath();
 
-      // Steel gradient
+      // Steel gradient across blade width
       var grad = c.createLinearGradient(0, -halfW, 0, halfW);
       grad.addColorStop(0, '#888888');
       grad.addColorStop(0.15, '#aaaaaa');
@@ -1122,25 +1129,24 @@ var Renderer = (function () {
       c.fillStyle = grad;
       c.fill();
 
-      // Outline
       c.strokeStyle = 'rgba(40, 40, 40, 0.5)';
-      c.lineWidth = 0.4 * s;
+      c.lineWidth = 0.35 * s;
       c.stroke();
 
-      // Center ridge
+      // Center ridge on blade tip
       c.beginPath();
-      c.moveTo(hubR * 0.9, 0);
-      c.lineTo(tipX * 0.85, 0);
-      c.strokeStyle = 'rgba(0, 0, 0, 0.08)';
-      c.lineWidth = 0.6 * s;
+      c.moveTo(arcR * 0.85, 0);
+      c.lineTo(tipX * 0.9, 0);
+      c.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      c.lineWidth = 0.5 * s;
       c.stroke();
 
-      // Glow edge
+      // Glow edge on blade
       if (bScheme.hasGlow) {
         var eR = bScheme.glowColor[0], eG = bScheme.glowColor[1], eB = bScheme.glowColor[2];
         c.beginPath();
         c.moveTo(bladeStart, 0);
-        c.bezierCurveTo(bladeStart + fanR * 0.25, -halfW, fanR * 0.7, -halfW * 0.75, tipX, 0);
+        c.bezierCurveTo(arcR * 0.85, -halfW * 0.9, arcR, -halfW * 0.7, tipX, 0);
         c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.3)';
         c.lineWidth = 0.5 * s;
         c.stroke();
@@ -1149,36 +1155,43 @@ var Renderer = (function () {
       c.restore();
     }
 
-    // Large dark hub (covers blade bases)
+    // --- Dark arc body (covers blade bases) ---
     c.beginPath();
-    c.arc(0, 0, hubR, 0, Math.PI * 2);
-    var hubGrad = c.createRadialGradient(-hubR * 0.2, -hubR * 0.2, 0, 0, 0, hubR);
-    hubGrad.addColorStop(0, '#3a3a3a');
-    hubGrad.addColorStop(0.3, '#2a2a2a');
-    hubGrad.addColorStop(0.7, '#1a1a1a');
-    hubGrad.addColorStop(1, '#0e0e0e');
-    c.fillStyle = hubGrad;
+    c.moveTo(0, 0);
+    c.arc(0, 0, arcR, arcStart, arcEnd);
+    c.closePath();
+
+    var bodyGrad = c.createRadialGradient(0, -arcR * 0.3, arcR * 0.1, 0, 0, arcR);
+    bodyGrad.addColorStop(0, '#3a3a3a');
+    bodyGrad.addColorStop(0.3, '#2a2a2a');
+    bodyGrad.addColorStop(0.6, '#1a1a1a');
+    bodyGrad.addColorStop(1, '#0e0e0e');
+    c.fillStyle = bodyGrad;
     c.fill();
+
     c.strokeStyle = 'rgba(0, 0, 0, 0.6)';
     c.lineWidth = 0.5 * s;
     c.stroke();
 
-    // Hub highlight ring
+    // Subtle arc edge highlight (inner ring near top)
     c.beginPath();
-    c.arc(0, 0, hubR * 0.75, 0, Math.PI * 2);
-    c.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+    c.arc(0, 0, arcR * 0.85, arcStart + 0.1, arcEnd - 0.1);
+    c.strokeStyle = 'rgba(80, 80, 80, 0.25)';
     c.lineWidth = 0.4 * s;
     c.stroke();
 
-    // Central rivet dot
+    // --- Pivot rivet at bottom ---
     c.beginPath();
-    c.arc(0, 0, hubR * 0.22, 0, Math.PI * 2);
-    var rivetGrad = c.createRadialGradient(-hubR * 0.05, -hubR * 0.05, 0, 0, 0, hubR * 0.22);
-    rivetGrad.addColorStop(0, '#888888');
-    rivetGrad.addColorStop(0.5, '#555555');
-    rivetGrad.addColorStop(1, '#333333');
+    c.arc(0, 0, pivotR, 0, Math.PI * 2);
+    var rivetGrad = c.createRadialGradient(-pivotR * 0.3, -pivotR * 0.3, 0, 0, 0, pivotR);
+    rivetGrad.addColorStop(0, '#555555');
+    rivetGrad.addColorStop(0.5, '#333333');
+    rivetGrad.addColorStop(1, '#1a1a1a');
     c.fillStyle = rivetGrad;
     c.fill();
+    c.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    c.lineWidth = 0.4 * s;
+    c.stroke();
 
     c.restore();
   }
@@ -1223,16 +1236,16 @@ var Renderer = (function () {
     var outTopY = rectOY - rectHH - beamLen;
     outTopY = outTopY + (rectOY - rectHH - outTopY) * 0.25;
 
-    // Input beams: one from bottom (straight up), one from bottom-right (45 deg)
-    var inLen = beamLen * 1.2;
+    // Input beams: one from bottom (straight up), one from middle-right (horizontal)
+    var inLen = beamLen * 1.9008;  // extended 10% more (1.728 * 1.1)
     var inStartOffsets = [
       { x: 0, y: inLen },       // bottom (straight up)
-      { x: inLen, y: inLen }    // bottom-right (45 deg)
+      { x: inLen, y: 0 }        // middle-right (horizontal, right angle with bottom beam)
     ];
     var inBeamColors = [beamColors[0], beamColors[beamColors.length - 1]];
 
     // Wave parameters
-    var waveAmp = 2 * s;
+    var waveAmp = 0.625 * s;  // increased 25%
     var waveFreq = 2.5;
     var waveSteps = 30;
 
@@ -1540,32 +1553,32 @@ var Renderer = (function () {
     9:  [[0.08, 0.12, false], [0.5, 0.12, false], [0.92, 0.12, false],
          [0.08, 0.5, false],  [0.5, 0.5, false],  [0.92, 0.5, false],
          [0.08, 0.88, true],  [0.5, 0.88, true],  [0.92, 0.88, true]],
-    10: [[0.25, 0.06, false], [0.75, 0.06, false],
-         [0.08, 0.30, false], [0.5, 0.30, false], [0.92, 0.30, false],
-         [0.08, 0.62, true],  [0.5, 0.62, true],  [0.92, 0.62, true],
-         [0.25, 0.90, true],  [0.75, 0.90, true]]
+    10: [[0.25, 0.02, false], [0.75, 0.02, false],
+         [0.08, 0.34, false], [0.5, 0.34, false], [0.92, 0.34, false],
+         [0.08, 0.66, true],  [0.5, 0.66, true],  [0.92, 0.66, true],
+         [0.25, 0.98, true],  [0.75, 0.98, true]]
   };
 
   // Prisms use vertical arrangement for 2-card
   var PRISM_2_LAYOUT = [[0.5, 0.2, false], [0.5, 0.8, false]];
 
-  // Prism-specific layouts: rows of 3 use same horizontal spread as rows of 2 (0.2/0.5/0.8)
+  // Prism-specific layouts: rows of 3 have 0.5 gap between pips (matching rows of 2 at 0.25/0.75), so x = 0.0 / 0.5 / 1.0
   var PRISM_6_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
        [0.2, 0.5, false],  [0.8, 0.5, false],
        [0.2, 0.88, false], [0.8, 0.88, false]];
   var PRISM_7_LAYOUT = [[0.25, 0.12, false], [0.75, 0.12, false],
-       [0.2, 0.5, false],  [0.5, 0.5, false],  [0.8, 0.5, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
        [0.25, 0.88, true],  [0.75, 0.88, true]];
-  var PRISM_8_LAYOUT = [[0.2, 0.12, false], [0.5, 0.12, false], [0.8, 0.12, false],
+  var PRISM_8_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
        [0.25, 0.5, false],  [0.75, 0.5, false],
-       [0.2, 0.88, true],  [0.5, 0.88, true],  [0.8, 0.88, true]];
-  var PRISM_9_LAYOUT = [[0.2, 0.12, false], [0.5, 0.12, false], [0.8, 0.12, false],
-       [0.2, 0.5, false],  [0.5, 0.5, false],  [0.8, 0.5, false],
-       [0.2, 0.88, true],  [0.5, 0.88, true],  [0.8, 0.88, true]];
-  var PRISM_10_LAYOUT = [[0.25, 0.06, false], [0.75, 0.06, false],
-       [0.2, 0.30, false], [0.5, 0.30, false], [0.8, 0.30, false],
-       [0.2, 0.62, true],  [0.5, 0.62, true],  [0.8, 0.62, true],
-       [0.25, 0.90, true],  [0.75, 0.90, true]];
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var PRISM_9_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var PRISM_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
+       [0.0, 0.34, false], [0.5, 0.34, false], [1.0, 0.34, false],
+       [0.0, 0.66, true],  [0.5, 0.66, true],  [1.0, 0.66, true],
+       [0.25, 0.98, true],  [0.75, 0.98, true]];
 
   // Diodes & Prisms use 3 rows of 2 for 6-card (wider symbols need vertical stacking)
   var WIDE_6_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
@@ -1574,20 +1587,30 @@ var Renderer = (function () {
 
   // Diode-specific 10: rows of 2 pushed further from rows of 3
   var DIODE_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
-       [0.08, 0.30, false], [0.5, 0.30, false], [0.92, 0.30, false],
-       [0.08, 0.62, false], [0.5, 0.62, false], [0.92, 0.62, false],
-       [0.25, 0.94, false], [0.75, 0.94, false]];
+       [0.08, 0.34, false], [0.5, 0.34, false], [0.92, 0.34, false],
+       [0.08, 0.66, false], [0.5, 0.66, false], [0.92, 0.66, false],
+       [0.25, 0.98, false], [0.75, 0.98, false]];
 
   // Blade-specific 10: 3-4-3 rows, all centered
   var BLADE_10_LAYOUT = [[0.15, 0.08, false], [0.50, 0.08, false], [0.85, 0.08, false],
        [-0.025, 0.50, false], [0.325, 0.50, false], [0.675, 0.50, false], [1.025, 0.50, false],
        [0.15, 0.92, false], [0.50, 0.92, false], [0.85, 0.92, false]];
 
-  // Combiner-specific 10: top/bottom rows spread out to avoid overlap
-  var COMBINER_10_LAYOUT = [[0.25, -0.015, false], [0.75, -0.015, false],
-       [0.08, 0.315, false], [0.5, 0.315, false], [0.92, 0.315, false],
-       [0.08, 0.635, true],  [0.5, 0.635, true],  [0.92, 0.635, true],
-       [0.25, 0.99, true],  [0.75, 0.99, true]];
+  // Combiner-specific layouts: 0.6 horizontal gap (matching 6-card WIDE_6_LAYOUT)
+  // Rows of 2: 0.2/0.8, rows of 3: -0.1/0.5/1.1
+  var COMBINER_7_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
+       [-0.1, 0.5, false],  [0.5, 0.5, false],  [1.1, 0.5, false],
+       [0.2, 0.88, true],  [0.8, 0.88, true]];
+  var COMBINER_8_LAYOUT = [[-0.1, 0.12, false], [0.5, 0.12, false], [1.1, 0.12, false],
+       [0.2, 0.5, false],  [0.8, 0.5, false],
+       [-0.1, 0.88, true],  [0.5, 0.88, true],  [1.1, 0.88, true]];
+  var COMBINER_9_LAYOUT = [[-0.1, 0.12, false], [0.5, 0.12, false], [1.1, 0.12, false],
+       [-0.1, 0.5, false],  [0.5, 0.5, false],  [1.1, 0.5, false],
+       [-0.1, 0.88, true],  [0.5, 0.88, true],  [1.1, 0.88, true]];
+  var COMBINER_10_LAYOUT = [[0.2, 0.02, false], [0.8, 0.02, false],
+       [-0.1, 0.34, false], [0.5, 0.34, false], [1.1, 0.34, false],
+       [-0.1, 0.66, true],  [0.5, 0.66, true],  [1.1, 0.66, true],
+       [0.2, 0.98, true],  [0.8, 0.98, true]];
 
   // Blade-specific layouts with more vertical spacing
   var BLADE_4_LAYOUT = [[0.15, 0.1, false], [0.85, 0.1, false], [0.15, 0.9, false], [0.85, 0.9, false]];
@@ -1771,7 +1794,7 @@ var Renderer = (function () {
     if (isCustom && CUSTOM_PIP_LAYOUTS[count]) {
       layout = CUSTOM_PIP_LAYOUTS[count];
       // Suit-specific layout overrides
-      if (count === 6 && suit === 'diamonds') {
+      if (count === 6 && (suit === 'diamonds' || suit === 'spades' || suit === 'clubs')) {
         layout = WIDE_6_LAYOUT;
       } else if (suit === 'hearts') {
         if (count === 6) layout = PRISM_6_LAYOUT;
@@ -1781,8 +1804,11 @@ var Renderer = (function () {
         else if (count === 10) layout = PRISM_10_LAYOUT;
       } else if (count === 10 && suit === 'diamonds') {
         layout = DIODE_10_LAYOUT;
-      } else if (count === 10 && suit === 'clubs') {
-        layout = COMBINER_10_LAYOUT;
+      } else if (suit === 'clubs') {
+        if (count === 7) layout = COMBINER_7_LAYOUT;
+        else if (count === 8) layout = COMBINER_8_LAYOUT;
+        else if (count === 9) layout = COMBINER_9_LAYOUT;
+        else if (count === 10) layout = COMBINER_10_LAYOUT;
       } else if (suit === 'spades' && activeBladeStyle !== 'fan') {
         // Sai/Sword use blade-specific layouts
         if (count === 6) layout = BLADE_6_LAYOUT;

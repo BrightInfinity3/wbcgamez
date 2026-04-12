@@ -184,6 +184,13 @@
         0 0 40px var(--card-glow);
     }
 
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
     .card-icon {
       width: 64px;
       height: 64px;
@@ -192,10 +199,24 @@
       align-items: center;
       justify-content: center;
       font-size: 30px;
+      line-height: 1;
       margin-bottom: 20px;
       background: var(--card-icon-bg);
       box-shadow: 0 4px 20px var(--card-glow);
       transition: transform 0.35s ease;
+      flex-shrink: 0;
+    }
+
+    .card-icon canvas {
+      display: block;
+    }
+
+    .card-icon canvas.laserman-canvas {
+      transform: scale(1.25);
+    }
+
+    .card-header .card-icon {
+      margin-bottom: 0;
     }
 
     .card:hover .card-icon {
@@ -205,9 +226,13 @@
     .card-title {
       font-family: 'Orbitron', monospace;
       font-weight: 700;
-      font-size: 1.3rem;
+      font-size: 1.95rem;
       margin-bottom: 10px;
       letter-spacing: 0.03em;
+    }
+
+    .card-header .card-title {
+      margin-bottom: 0;
     }
 
     .card-desc {
@@ -342,7 +367,7 @@
     /* === RESPONSIVE === */
     @media (max-width: 640px) {
       .page { padding: 40px 16px 60px; }
-      .header { margin-bottom: 40px; }
+      .header { margin-bottom: 20px; }
       .games { grid-template-columns: 1fr; gap: 20px; }
       .card { padding: 24px 20px 20px; }
       .card-play { opacity: 1; transform: translateX(0); }
@@ -367,12 +392,14 @@
 
       <!-- LASERMAN -->
       <a href="/laserman/" class="card laserman">
-        <div class="card-icon">
-          <canvas id="laserman-icon" width="48" height="48"></canvas>
+        <div class="card-header">
+          <div class="card-icon">
+            <canvas id="laserman-icon" class="laserman-canvas" width="48" height="48"></canvas>
+          </div>
+          <h2 class="card-title">Laserman</h2>
         </div>
-        <h2 class="card-title">Laserman</h2>
         <p class="card-desc">
-          A word-guessing game. Pick your character, dodge the lasers, and guess the word before you're zapped.
+          A word-guessing game. Pick your character, dodge the lasers, and decipher the word before you're zapped.
         </p>
         <div class="card-tags">
           <span class="tag">Word Game</span>
@@ -385,10 +412,12 @@
 
       <!-- SOLOTERRA -->
       <a href="/soloterra/" class="card soloterra">
-        <div class="card-icon">
-          <canvas id="soloterra-icon" width="48" height="48"></canvas>
+        <div class="card-header">
+          <div class="card-icon">
+            <canvas id="soloterra-icon" width="48" height="48"></canvas>
+          </div>
+          <h2 class="card-title">SoloTerra</h2>
         </div>
-        <h2 class="card-title">SoloTerra</h2>
         <p class="card-desc">
           A custom solitaire variant with laser-themed cards, suit hierarchy rules, and a score leaderboard.
         </p>
@@ -403,8 +432,10 @@
 
       <!-- COMING SOON PLACEHOLDER -->
       <div class="card coming-soon">
-        <div class="card-icon">🎮</div>
-        <h2 class="card-title">More Games</h2>
+        <div class="card-header">
+          <div class="card-icon"><span style="display:block;transform:translateY(-4px)">🎮</span></div>
+          <h2 class="card-title">More Games</h2>
+        </div>
         <p class="card-desc">
           New games are in the lab. Stay tuned for more additions to the arcade.
         </p>
@@ -472,7 +503,7 @@
     (function() {
       const c = document.getElementById('laserman-icon');
       const x = c.getContext('2d');
-      const W = 48, CX = W / 2, CY = W / 2;
+      const W = 48, CX = W / 2, CY = W / 2 - 2;
       const green = '#00ff88';
 
       x.shadowColor = green;
@@ -492,10 +523,10 @@
       // Eyes
       x.shadowBlur = 3;
       x.beginPath();
-      x.arc(CX - 3, headY - 1.5, 1.2, 0, Math.PI * 2);
+      x.arc(CX - 3, headY - 1.5, 0.9, 0, Math.PI * 2);
       x.fill();
       x.beginPath();
-      x.arc(CX + 3, headY - 1.5, 1.2, 0, Math.PI * 2);
+      x.arc(CX + 3, headY - 1.5, 0.9, 0, Math.PI * 2);
       x.fill();
 
       // Smile (narrower arc, lowered)
