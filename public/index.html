@@ -585,8 +585,8 @@
       const cLeft = 10, cTop = 4, cW = 28, cH = 40, cR = 4;
 
       // Card fill (cream/white)
-      x.shadowColor = red;
-      x.shadowBlur = 4;
+      x.shadowColor = 'transparent';
+      x.shadowBlur = 0;
       x.fillStyle = '#fdf8f0';
       x.beginPath();
       x.roundRect(cLeft, cTop, cW, cH, cR);
@@ -653,12 +653,12 @@
       x.fillStyle = red;
       x.textAlign = 'left';
       x.textBaseline = 'top';
-      x.fillText('1', cLeft + 3, cTop + 3);
+      x.fillText('1', cLeft + 2, cTop + 2);
 
-      // Rank "1" bottom-right (same 3px inset, right-side up)
+      // Rank "1" bottom-right (same inset, right-side up)
       x.textAlign = 'right';
       x.textBaseline = 'bottom';
-      x.fillText('1', cLeft + cW - 3, cTop + cH - 3);
+      x.fillText('1', cLeft + cW - 2, cTop + cH - 2);
     })();
   </script>
 </body>
