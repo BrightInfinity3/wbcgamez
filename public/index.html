@@ -592,12 +592,12 @@
       x.roundRect(cLeft, cTop, cW, cH, cR);
       x.fill();
 
-      // Card border (dark red/gold)
+      // Card border (gold, outer edge)
       x.shadowBlur = 0;
-      x.strokeStyle = darkRed;
-      x.lineWidth = 1;
+      x.strokeStyle = '#c8a84e';
+      x.lineWidth = 1.2;
       x.beginPath();
-      x.roundRect(cLeft + 1.5, cTop + 1.5, cW - 3, cH - 3, cR - 1);
+      x.roundRect(cLeft, cTop, cW, cH, cR);
       x.stroke();
 
       // Diode pip — centered, scaled up 20%
