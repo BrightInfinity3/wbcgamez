@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoloTerra - Results Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=12">
+  <style>
+    /* Force results screen visible for preview */
+    body { background: var(--bg-dark); }
+    #screen-results { display: block !important; visibility: visible !important; opacity: 1 !important; }
+    .screen { position: relative !important; }
+  </style>
+</head>
+<body>
+  <!-- Results Screen (copy of main HTML) -->
+  <div id="screen-results" class="screen active">
+    <div class="results-content">
+      <div class="results-winner">
+        <h2 class="winner-title">You Win!</h2>
+        <div class="result-stats">
+          <div class="result-stat">
+            <span class="result-label">Score</span>
+            <span class="result-value" id="result-score">42</span>
+          </div>
+          <div class="result-stat">
+            <span class="result-label">Moves</span>
+            <span class="result-value" id="result-moves">87</span>
+          </div>
+        </div>
+        <div class="result-foundations-row" id="result-foundations">
+          <!-- Populated by script below -->
+        </div>
+        <div class="score-formula" id="score-formula">
+          <!-- Populated by script below -->
+        </div>
+      </div>
+      <div class="leaderboard-entry" id="leaderboard-entry">
+        <input type="text" id="leaderboard-name" class="leaderboard-input" placeholder="Enter your name" maxlength="20" autocomplete="off">
+        <button class="btn btn-gold btn-sm" id="btn-submit-score">Submit</button>
+      </div>
+      <div class="results-buttons">
+        <button class="btn btn-gold btn-large" id="btn-play-again">Play Again</button>
+        <button class="btn btn-outline btn-large" id="btn-results-menu">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load dependencies for rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
+  <script src="js/cards.js?v=12"></script>
+  <script src="js/game.js?v=12"></script>
+  <script src="js/animations.js?v=12"></script>
+  <script src="js/textures.js?v=12"></script>
+  <script src="js/renderer.js?v=12"></script>
+  <script>
+    // Populate mock results for preview
+    (function () {
+      var suits = ['diamonds', 'hearts', 'spades', 'clubs'];
+      var foundationCounts = [10, 7, 5, 3]; // sample foundation top ranks
+      var foundationInfo = document.getElementById('result-foundations');
+
+      for (var i = 0; i < 4; i++) {
+        var span = document.createElement('span');
+        span.className = 'foundation-result';
+        var pipCanvas = Renderer._renderSuitPip(suits[i], 42);
+        pipCanvas.style.display = 'block';
+        var pipWrap = document.createElement('div');
+        pipWrap.className = 'pip-wrapper';
+        pipWrap.appendChild(pipCanvas);
+        span.appendChild(pipWrap);
+        var txt = document.createElement('span');
+        txt.className = 'result-rank';
+        txt.textContent = foundationCounts[i];
+        txt.style.color = Renderer.getSuitColor(suits[i]);
+        span.appendChild(txt);
+        foundationInfo.appendChild(span);
+      }
+
+      // Score formula
+      var savedP = 3, savedB = 5, savedC = 7;
+      var term1 = savedP, term2 = savedB * 2, term3 = savedC * 3;
+      var score = term1 + term2 + term3;
+      var formulaEl = document.getElementById('score-formula');
+      formulaEl.innerHTML =
+        '<span class="formula-line">Saved: &ensp;Prisms \u00d7 1 &ensp;+&ensp; Blades \u00d7 2 &ensp;+&ensp; Combiners \u00d7 3</span>' +
+        '<span class="formula-line">' + savedP + ' \u00d7 1 &ensp;+&ensp; ' + savedB + ' \u00d7 2 &ensp;+&ensp; ' + savedC + ' \u00d7 3</span>' +
+        '<span class="formula-line">' + term1 + ' &ensp;+&ensp; ' + term2 + ' &ensp;+&ensp; ' + term3 + ' &ensp;= &ensp;<span class="formula-result">' + score + '</span></span>';
+
+      document.getElementById('result-score').textContent = score;
+    })();
+  </script>
+</body>
+</html>

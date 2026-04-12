@@ -47,6 +47,8 @@ var UI = (function () {
     document.getElementById('btn-play').addEventListener('click', startNewGame);
     document.getElementById('btn-how-to-play').addEventListener('click', function () {
       showScreen('screen-rules');
+      var rulesPanel = document.querySelector('.rules-panel');
+      if (rulesPanel) rulesPanel.scrollTop = 0;
     });
     document.getElementById('btn-rules-back').addEventListener('click', function () {
       showScreen('screen-title');
@@ -86,6 +88,8 @@ var UI = (function () {
     // Options screen buttons
     document.getElementById('btn-options').addEventListener('click', function () {
       showScreen('screen-options');
+      var optionsPanel = document.querySelector('.options-panel');
+      if (optionsPanel) optionsPanel.scrollTop = 0;
       renderSuitPreview();
     });
     document.getElementById('btn-options-back').addEventListener('click', function () {
@@ -150,6 +154,8 @@ var UI = (function () {
     document.getElementById('btn-leaderboard').addEventListener('click', function () {
       populateLeaderboard();
       showScreen('screen-leaderboard');
+      var lbPanel = document.querySelector('.leaderboard-panel');
+      if (lbPanel) lbPanel.scrollTop = 0;
     });
     document.getElementById('btn-leaderboard-back').addEventListener('click', function () {
       showScreen('screen-title');
@@ -252,16 +258,16 @@ var UI = (function () {
 
   // ---- Reset suit options to defaults and update UI buttons ----
   function resetSuitDefaults() {
-    // Default: laser mode, Blue diodes, Red prisms, Black blades/sai, Black combiners, no face cards
+    // Default: laser mode, Red diodes, Red prisms, Black blades/fan, Black combiners, no face cards
     CardSystem.setFaceCardMode(false);
     Renderer.setSuitSkin('diamonds', 'laser');
     Renderer.setSuitSkin('hearts', 'laser');
     Renderer.setSuitSkin('spades', 'laser');
     Renderer.setSuitSkin('clubs', 'laser');
-    Renderer.setDiodeScheme('blue');
+    Renderer.setDiodeScheme('red');
     Renderer.setPrismScheme('red');
     Renderer.setBladeScheme('black');
-    Renderer.setBladeStyle('sai');
+    Renderer.setBladeStyle('fan');
     Renderer.setCombinerScheme('black');
 
     // Update UI buttons to reflect defaults
@@ -279,10 +285,10 @@ var UI = (function () {
       var suit = btn.getAttribute('data-suit');
       var variant = btn.getAttribute('data-variant');
       var isActive = false;
-      if (suit === 'diamonds') isActive = (variant === 'blue');
+      if (suit === 'diamonds') isActive = (variant === 'red');
       else if (suit === 'hearts') isActive = (variant === 'red');
       else if (suit === 'spades') isActive = (variant === 'black');
-      else if (suit === 'spades-style') isActive = (variant === 'sai');
+      else if (suit === 'spades-style') isActive = (variant === 'fan');
       else if (suit === 'clubs') isActive = (variant === 'black');
       btn.classList.toggle('active', isActive);
     }
@@ -377,7 +383,7 @@ var UI = (function () {
       suitNames = { diamonds: 'Diodes', hearts: 'Prisms', spades: 'Blades', clubs: 'Combiners' };
       suitAltNames = { diamonds: '(Diamonds)', hearts: '(Hearts)', spades: '(Spades)', clubs: '(Clubs)' };
     }
-    var sampleRank = CardSystem.getFaceCardMode() ? '7' : '5';
+    var sampleRank = '10';
     var cardW = 104;
     var cardH = 148;
     var gap = 18;
@@ -452,9 +458,10 @@ var UI = (function () {
     }
 
     // Restore variant selections (migrate old scheme names)
-    var SCHEME_MIGRATION = { standard: 'black', 'blue-glow': 'blue' };
+    var SCHEME_MIGRATION = { standard: 'black', 'blue-glow': 'blue', broad: 'hybrid' };
+    function migrateScheme(name) { return SCHEME_MIGRATION[name] || name; }
     if (prefs.diodeScheme) {
-      Renderer.setDiodeScheme(prefs.diodeScheme);
+      Renderer.setDiodeScheme(migrateScheme(prefs.diodeScheme));
       var resolvedDiode = Renderer.getSuitSkins().diodeScheme;
       var dBtns = document.querySelectorAll('.variant-btn[data-suit="diamonds"]');
       for (var d = 0; d < dBtns.length; d++) {
@@ -462,7 +469,7 @@ var UI = (function () {
       }
     }
     if (prefs.prismScheme) {
-      Renderer.setPrismScheme(prefs.prismScheme);
+      Renderer.setPrismScheme(migrateScheme(prefs.prismScheme));
       var resolvedPrism = Renderer.getSuitSkins().prismScheme;
       var pBtns = document.querySelectorAll('.variant-btn[data-suit="hearts"]');
       for (var p = 0; p < pBtns.length; p++) {
@@ -470,7 +477,7 @@ var UI = (function () {
       }
     }
     if (prefs.bladeScheme) {
-      Renderer.setBladeScheme(prefs.bladeScheme);
+      Renderer.setBladeScheme(migrateScheme(prefs.bladeScheme));
       var resolvedBlade = Renderer.getSuitSkins().bladeScheme;
       var sBtns = document.querySelectorAll('.variant-btn[data-suit="spades"]');
       for (var sb = 0; sb < sBtns.length; sb++) {
@@ -486,7 +493,7 @@ var UI = (function () {
       }
     }
     if (prefs.combinerScheme) {
-      Renderer.setCombinerScheme(prefs.combinerScheme);
+      Renderer.setCombinerScheme(migrateScheme(prefs.combinerScheme));
       var resolvedCombiner = Renderer.getSuitSkins().combinerScheme;
       var cBtns = document.querySelectorAll('.variant-btn[data-suit="clubs"]');
       for (var cb = 0; cb < cBtns.length; cb++) {

@@ -103,10 +103,10 @@ var Renderer = (function () {
       beamColors: ['#1565C0', '#4527A0', '#7B1FA2'],
       beamLabel: 'Cool'
     },
-    broad: {
+    hybrid: {
       color: '#1B5E20',
       beamColors: ['#c62828', '#1B6B1B', '#1565C0'],
-      beamLabel: 'Broad'
+      beamLabel: 'Hybrid'
     }
   };
 
@@ -162,22 +162,22 @@ var Renderer = (function () {
       outputColor: '#4527A0',
       beamLabel: 'Cool'
     },
-    broad: {
+    hybrid: {
       color: '#1a1a1a',
       beamColors: ['#c62828', '#1565C0'],
       outputColor: '#ffffff',
       outputBorder: null,
-      broadOutput: true,
-      beamLabel: 'Broad'
+      hybridOutput: true,
+      beamLabel: 'Hybrid'
     }
   };
 
   // Active scheme selections
-  var activeDiodeScheme = 'blue';
+  var activeDiodeScheme = 'red';
   var activePrismScheme = 'red';
   var activeBladeScheme = 'black';
   var activeCombinerScheme = 'black';
-  var activeBladeStyle = 'sai'; // 'blade' or 'sai'
+  var activeBladeStyle = 'fan'; // 'blade', 'sai', or 'fan'
 
   function setSuitSkin(suit, skin) {
     suitSkins[suit] = skin;
@@ -196,7 +196,7 @@ var Renderer = (function () {
   }
 
   function setBladeStyle(style) {
-    activeBladeStyle = (style === 'sai') ? 'sai' : 'blade';
+    activeBladeStyle = (style === 'sai' || style === 'fan') ? style : 'blade';
   }
 
   function setCombinerScheme(scheme) {
@@ -236,11 +236,7 @@ var Renderer = (function () {
     } else if (suit === 'hearts') {
       drawPrismPip(c, x, y, miniSize, flip, false);
     } else if (suit === 'spades') {
-      if (activeBladeStyle === 'sai') {
-        drawSaiPip(c, x, y, miniSize, flip);
-      } else {
-        drawBladePip(c, x, y, miniSize, flip);
-      }
+      drawBladeAny(c, x, y, miniSize, flip);
     } else if (suit === 'clubs') {
       drawCombinerPip(c, x, y, miniSize, flip, false);
     }
@@ -378,7 +374,7 @@ var Renderer = (function () {
     // Beam widths: uniform for all 3 incoming beams and single outgoing beam
     var beamWidths = [beamW, beamW, beamW];
     // Broad outgoing beam keeps original bolder widths for its colored borders
-    var broadBorderWidths = [beamW * 1.4, beamW * 1.4, beamW * 1.3];
+    var hybridBorderWidths = [beamW * 1.4, beamW * 1.4, beamW * 1.3];
 
     // Outgoing beam Y positions (red=-beamW, green=0, blue=+beamW)
     // Red top edge at convY - beamW - beamW/2 = convY - 1.5*beamW
@@ -500,12 +496,12 @@ var Renderer = (function () {
     var outStartX = dimGlow ? convX + coreR : convX;
     c.save();
     c.globalAlpha = 0.85;
-    if (activePrismScheme === 'broad') {
-      // Multi: wide merged white beam with colored borders (uses original bolder widths)
-      var outTopY = outYs[0] - broadBorderWidths[0] / 2;
-      var outBotY = outYs[2] + broadBorderWidths[2] / 2;
-      var halfRedW = broadBorderWidths[0] / 2;
-      var halfBlueW = broadBorderWidths[2] / 2;
+    if (activePrismScheme === 'hybrid') {
+      // Hybrid: wide merged white beam with colored borders (uses original bolder widths)
+      var outTopY = outYs[0] - hybridBorderWidths[0] / 2;
+      var outBotY = outYs[2] + hybridBorderWidths[2] / 2;
+      var halfRedW = hybridBorderWidths[0] / 2;
+      var halfBlueW = hybridBorderWidths[2] / 2;
       c.beginPath();
       c.rect(outStartX, outTopY, outEndX - outStartX, outBotY - outTopY);
       c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.4)' : '#ffffff';
@@ -1011,8 +1007,158 @@ var Renderer = (function () {
     drawSaiPip(c, x, y, size * 1.3, false);
   }
 
-  // ---- Combiner pip drawing ----
-  // Rainbow beams converge from above into a dark circle, with wavy energy below
+  // ---- Fan Blade pip drawing ----
+  // Steel fan blade: 5 overlapping arc blades radiating from a central rivet
+  function drawFanPip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+
+    var s = size / 20;
+    var bScheme = BLADE_SCHEMES[activeBladeScheme];
+
+    // Fan parameters
+    var numBlades = 5;
+    var fanR = 10 * s;        // blade length (radius)
+    var bladeW = 3.6 * s;     // blade width at widest
+    var rivetR = 2.2 * s;     // central rivet radius
+    var startAngle = -Math.PI * 0.75;  // start from upper-left
+    var sweep = Math.PI * 0.75;        // fan sweep angle (135 degrees)
+
+    // Vertical centering: compute bounding box of fan
+    var midAngle = startAngle + sweep / 2;
+    var centerOffsetX = Math.cos(midAngle) * fanR * 0.15;
+    var centerOffsetY = Math.sin(midAngle) * fanR * 0.15;
+    c.translate(-centerOffsetX, -centerOffsetY);
+
+    // --- Glow effect ---
+    if (bScheme.hasGlow) {
+      var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
+      c.save();
+      c.globalAlpha = 0.3;
+      var glowGrad = c.createRadialGradient(0, 0, rivetR, 0, 0, fanR * 1.3);
+      glowGrad.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.5)');
+      glowGrad.addColorStop(0.5, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.2)');
+      glowGrad.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
+      c.fillStyle = glowGrad;
+      c.beginPath();
+      c.arc(0, 0, fanR * 1.3, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+
+    // Steel gradient helper (horizontal across blade)
+    function makeBladeGrad(angle) {
+      var perpX = -Math.sin(angle) * bladeW;
+      var perpY = Math.cos(angle) * bladeW;
+      var grad = c.createLinearGradient(-perpX, -perpY, perpX, perpY);
+      grad.addColorStop(0, '#888888');
+      grad.addColorStop(0.15, '#aaaaaa');
+      grad.addColorStop(0.4, '#cccccc');
+      grad.addColorStop(0.5, '#dddddd');
+      grad.addColorStop(0.6, '#cccccc');
+      grad.addColorStop(0.85, '#aaaaaa');
+      grad.addColorStop(1, '#888888');
+      return grad;
+    }
+
+    // Draw each blade as an elongated ellipse/leaf shape
+    for (var bi = 0; bi < numBlades; bi++) {
+      var angle = startAngle + (bi / (numBlades - 1)) * sweep;
+      var cosA = Math.cos(angle);
+      var sinA = Math.sin(angle);
+
+      c.save();
+      c.rotate(angle);
+
+      // Blade shape: tapered oval from rivet to tip
+      c.beginPath();
+      // Start from near rivet, curve out to widest point, narrow to tip
+      var tipX = fanR;
+      var halfW = bladeW / 2;
+      c.moveTo(rivetR * 0.7, 0);
+      c.bezierCurveTo(rivetR + fanR * 0.2, -halfW, fanR * 0.65, -halfW * 0.8, tipX, 0);
+      c.bezierCurveTo(fanR * 0.65, halfW * 0.8, rivetR + fanR * 0.2, halfW, rivetR * 0.7, 0);
+      c.closePath();
+
+      // Fill with steel gradient
+      var grad = c.createLinearGradient(0, -halfW, 0, halfW);
+      grad.addColorStop(0, '#888888');
+      grad.addColorStop(0.15, '#aaaaaa');
+      grad.addColorStop(0.4, '#cccccc');
+      grad.addColorStop(0.5, '#dddddd');
+      grad.addColorStop(0.6, '#cccccc');
+      grad.addColorStop(0.85, '#aaaaaa');
+      grad.addColorStop(1, '#888888');
+      c.fillStyle = grad;
+      c.fill();
+
+      // Outline
+      c.strokeStyle = 'rgba(40, 40, 40, 0.5)';
+      c.lineWidth = 0.4 * s;
+      c.stroke();
+
+      // Center ridge (fuller line)
+      c.beginPath();
+      c.moveTo(rivetR * 1.2, 0);
+      c.lineTo(tipX * 0.85, 0);
+      c.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+      c.lineWidth = 0.6 * s;
+      c.stroke();
+
+      // Glow edge lines
+      if (bScheme.hasGlow) {
+        var eR = bScheme.glowColor[0], eG = bScheme.glowColor[1], eB = bScheme.glowColor[2];
+        c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.25)';
+        c.lineWidth = 0.5 * s;
+        c.stroke(); // strokes the last path (ridge) with glow color - not ideal, redo:
+        // Top edge glow
+        c.beginPath();
+        c.moveTo(rivetR * 0.7, 0);
+        c.bezierCurveTo(rivetR + fanR * 0.2, -halfW, fanR * 0.65, -halfW * 0.8, tipX, 0);
+        c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.3)';
+        c.lineWidth = 0.5 * s;
+        c.stroke();
+      }
+
+      c.restore();
+    }
+
+    // Central rivet (hub)
+    c.beginPath();
+    c.arc(0, 0, rivetR, 0, Math.PI * 2);
+    var rivetGrad = c.createRadialGradient(-rivetR * 0.3, -rivetR * 0.3, 0, 0, 0, rivetR);
+    rivetGrad.addColorStop(0, '#b0b0b0');
+    rivetGrad.addColorStop(0.4, '#808080');
+    rivetGrad.addColorStop(0.8, '#555555');
+    rivetGrad.addColorStop(1, '#3a3a3a');
+    c.fillStyle = rivetGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    c.lineWidth = 0.5 * s;
+    c.stroke();
+
+    // Rivet center dot
+    c.beginPath();
+    c.arc(0, 0, rivetR * 0.3, 0, Math.PI * 2);
+    c.fillStyle = '#4a4a4a';
+    c.fill();
+
+    c.restore();
+  }
+
+  // Dispatch blade drawing based on active style
+  function drawBladeAny(c, x, y, size, flip) {
+    if (activeBladeStyle === 'fan') {
+      drawFanPip(c, x, y, size, flip);
+    } else if (activeBladeStyle === 'sai') {
+      drawSaiPip(c, x, y, size, flip);
+    } else {
+      drawBladePip(c, x, y, size, flip);
+    }
+  }
+
+  // ---- Combiner pip drawing (V2: 4 corner inputs, dual circles, dual output beams) ----
   function drawCombinerPip(c, x, y, size, flip, dimGlow) {
     c.save();
     c.translate(x, y);
@@ -1022,42 +1168,46 @@ var Renderer = (function () {
     var cScheme = COMBINER_SCHEMES[activeCombinerScheme];
     var beamColors = cScheme.beamColors;
 
-    // Square dimensions
-    var rectHW = 5.13 * s;        // half-width (reduced 15%)
-    var rectHH = 5.13 * s;        // half-height (square, reduced 15%)
+    // Rectangle dimensions
+    var rectHW = 5.13 * s;
+    var rectHH = 5.13 * s;
     var rectOX = 0;
     var rectOY = 0;
 
-    // Beam parameters (match prism: beamW = 1.6 * s, output = beamW * 1.4)
+    // Beam width (matches prism: beamW = 1.6 * s)
     var beamW = 1.6 * s;
-    var outBeamW = beamW * 1.4;  // same as prism output beam
 
-    // Convergence point (center of rectangle)
-    var convX = rectOX;
-    var convY = rectOY;
+    // Dual convergence circles — side by side, touching
+    var circR = 2.4 * s;
+    var circSpacing = circR * 1.05;  // just touching
+    var leftCircX = rectOX - circSpacing;
+    var rightCircX = rectOX + circSpacing;
+    var circY = rectOY;
 
-    // Input/output beam lengths
+    // Input beam length
     var beamLen = rectHW * 1.5;
-    // Output beam goes straight up (shortened 25% total from head: 10% + 15%)
-    var outTopY = rectOY - rectHH - beamLen;
-    outTopY = outTopY + (rectOY - rectHH - outTopY) * 0.25;
-
-    // Input beams approach at 45 degrees from bottom-left and bottom-right
-    // At 45deg, dx = dy, so the beam travels equal horizontal and vertical distance
     var inLen = beamLen * 1.2;
-    var inStartOffsets = [
-      { x: -inLen, y: inLen },  // bottom-left
-      { x: inLen, y: inLen }    // bottom-right
-    ];
-    // Both input beams use the same color from scheme
-    var inBeamColors = [beamColors[0], beamColors[beamColors.length - 1]];
 
-    // Wave parameters
+    // 4 corner input beams: top-left → left circle, bottom-left → left circle,
+    //                       top-right → right circle, bottom-right → right circle
+    var cornerInputs = [
+      { sx: -inLen, sy: -inLen, ex: leftCircX,  ey: circY, color: beamColors[0] },   // top-left
+      { sx: -inLen, sy: inLen,  ex: leftCircX,  ey: circY, color: beamColors[0] },   // bottom-left
+      { sx: inLen,  sy: -inLen, ex: rightCircX, ey: circY, color: beamColors[beamColors.length - 1] }, // top-right
+      { sx: inLen,  sy: inLen,  ex: rightCircX, ey: circY, color: beamColors[beamColors.length - 1] }  // bottom-right
+    ];
+
+    // Output beams go straight up from each circle
+    var outLen = beamLen * 0.75;
+    var outTopY = circY - rectHH - outLen;
+    outTopY = outTopY + (circY - rectHH - outTopY) * 0.25;
+
+    // Wave parameters (symmetrical)
     var waveAmp = 2 * s;
     var waveFreq = 2.5;
     var waveSteps = 30;
 
-    // --- Draw order: shadow, rect body, beams ON TOP, then glow ---
+    // --- Draw order: shadow, rect body, beams, output beams, glow, core circles ---
 
     // Drop shadow
     c.save();
@@ -1099,138 +1249,253 @@ var Renderer = (function () {
     c.fillStyle = 'rgba(30, 60, 100, 0.08)';
     c.fill();
 
-    // --- Incoming sinusoidal beams at 45 degrees from bottom-left and bottom-right ---
+    // --- 4 incoming sinusoidal beams from corners ---
     c.save();
     c.globalAlpha = 0.85;
-    for (var ib = 0; ib < 2; ib++) {
-      var startX = rectOX + inStartOffsets[ib].x;
-      var startY = rectOY + inStartOffsets[ib].y;
-      var endX = rectOX;
-      var endY = rectOY;
+    for (var ib = 0; ib < 4; ib++) {
+      var ci = cornerInputs[ib];
+      var startX = rectOX + ci.sx;
+      var startY = rectOY + ci.sy;
+      var endX = ci.ex;
+      var endY = ci.ey;
+
+      // For dimGlow: clip beam at circle edge (line-circle intersection)
+      var clipEndX = endX;
+      var clipEndY = endY;
+      if (dimGlow) {
+        var circCX = ci.ex;
+        var circCY = ci.ey;
+        var ddx = endX - startX;
+        var ddy = endY - startY;
+        var fx = startX - circCX;
+        var fy = startY - circCY;
+        var qa = ddx * ddx + ddy * ddy;
+        var qb = 2 * (fx * ddx + fy * ddy);
+        var qc = fx * fx + fy * fy - circR * circR;
+        var disc = qb * qb - 4 * qa * qc;
+        if (disc >= 0) {
+          var qt = (-qb - Math.sqrt(disc)) / (2 * qa);
+          clipEndX = startX + ddx * qt;
+          clipEndY = startY + ddy * qt;
+        }
+      }
 
       c.beginPath();
-      var tStart = 0.15; // clip 15% from tail
+      var tStart = 0.15;
+      // Wave sign: symmetric mirrors (top-left & bottom-right same, top-right & bottom-left mirrored)
+      var waveSign = (ib === 1 || ib === 2) ? -1 : 1;
       for (var wi = 0; wi <= waveSteps; wi++) {
         var t = tStart + (wi / waveSteps) * (1 - tStart);
-        // Lerp along the straight 45-degree path
-        var baseX = startX + (endX - startX) * t;
-        var baseY = startY + (endY - startY) * t;
-        // Perpendicular to path direction
-        var dx = endX - startX;
-        var dy = endY - startY;
+        var baseX = startX + (clipEndX - startX) * t;
+        var baseY = startY + (clipEndY - startY) * t;
+        var dx = clipEndX - startX;
+        var dy = clipEndY - startY;
         var len = Math.sqrt(dx * dx + dy * dy);
         var perpX = -dy / len;
         var perpY = dx / len;
-        // Sinusoidal offset, tapering near rectangle
-        // Negate wave for right beam (ib=1) so both beams are symmetric mirrors
         var taper = 1 - t * t;
-        var waveSign = (ib === 1) ? -1 : 1;
         var wave = Math.sin(t * waveFreq * Math.PI * 2) * waveAmp * taper * waveSign;
         var px = baseX + perpX * wave;
         var py = baseY + perpY * wave;
         if (wi === 0) c.moveTo(px, py);
         else c.lineTo(px, py);
       }
-      c.strokeStyle = inBeamColors[ib];
-      c.lineWidth = beamW * 1.2;
+      c.strokeStyle = ci.color;
+      c.lineWidth = beamW;
       c.lineCap = 'butt';
       c.stroke();
     }
     c.restore();
 
-    // --- Output beam going straight up from rectangle top ---
+    // --- Two output beams going straight up ---
     c.save();
     c.globalAlpha = 0.85;
-    if (cScheme.broadOutput) {
-      // Broad: wide red/white/blue beam (like broad prism exit but vertical)
-      var outStartY = rectOY - rectHH * 0.5;
-      var broadW = outBeamW * 3;
-      var halfBroadW = broadW / 2;
-      var halfRedW = outBeamW * 0.6;
-      var halfBlueW = outBeamW * 0.6;
-      // White fill (translucent to match prism broad beam style)
+    var outStartY = circY - rectHH * 0.5;
+
+    if (cScheme.hybridOutput) {
+      // Hybrid: left beam red, right beam blue
       c.beginPath();
-      c.rect(rectOX - halfBroadW, outTopY, broadW, outStartY - outTopY);
-      c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.65)';
-      c.fill();
-      // Red border on left
-      c.beginPath();
-      c.moveTo(rectOX - halfBroadW + halfRedW / 2, outStartY);
-      c.lineTo(rectOX - halfBroadW + halfRedW / 2, outTopY);
+      c.moveTo(leftCircX, outStartY);
+      c.lineTo(leftCircX, outTopY);
       c.strokeStyle = dimGlow ? 'rgba(198, 40, 40, 0.5)' : '#c62828';
-      c.lineWidth = halfRedW;
+      c.lineWidth = beamW;
       c.lineCap = 'butt';
       c.stroke();
-      // Blue border on right
       c.beginPath();
-      c.moveTo(rectOX + halfBroadW - halfBlueW / 2, outStartY);
-      c.lineTo(rectOX + halfBroadW - halfBlueW / 2, outTopY);
+      c.moveTo(rightCircX, outStartY);
+      c.lineTo(rightCircX, outTopY);
       c.strokeStyle = dimGlow ? 'rgba(21, 101, 192, 0.5)' : '#1565C0';
-      c.lineWidth = halfBlueW;
+      c.lineWidth = beamW;
       c.lineCap = 'butt';
       c.stroke();
     } else if (cScheme.outputBorder) {
-      // Draw thin border lines on left and right of beam
-      c.beginPath();
-      c.moveTo(rectOX, rectOY - rectHH * 0.5);
-      c.lineTo(rectOX, outTopY);
-      c.strokeStyle = cScheme.outputBorder;
-      c.lineWidth = outBeamW + 0.75 * s;
-      c.lineCap = 'butt';
-      c.stroke();
-      // White glow along output beam
-      c.beginPath();
-      c.moveTo(rectOX, rectOY - rectHH * 0.5);
-      c.lineTo(rectOX, outTopY);
-      c.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      c.lineWidth = outBeamW * 2.5;
-      c.lineCap = 'round';
-      c.stroke();
+      // Black scheme: white beams with dark border
+      for (var ob = 0; ob < 2; ob++) {
+        var obX = ob === 0 ? leftCircX : rightCircX;
+        c.beginPath();
+        c.moveTo(obX, outStartY);
+        c.lineTo(obX, outTopY);
+        c.strokeStyle = cScheme.outputBorder;
+        c.lineWidth = beamW + 0.6 * s;
+        c.lineCap = 'butt';
+        c.stroke();
+        c.beginPath();
+        c.moveTo(obX, outStartY);
+        c.lineTo(obX, outTopY);
+        c.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        c.lineWidth = beamW * 2;
+        c.lineCap = 'round';
+        c.stroke();
+      }
     }
-    if (!cScheme.broadOutput) {
-      c.beginPath();
-      c.moveTo(rectOX, rectOY - rectHH * 0.5);
-      c.lineTo(rectOX, outTopY);
-      c.strokeStyle = cScheme.outputColor;
-      c.lineWidth = outBeamW;
-      c.lineCap = 'butt';
-      c.stroke();
+    if (!cScheme.hybridOutput) {
+      // Standard output beams (same color)
+      for (var ob2 = 0; ob2 < 2; ob2++) {
+        var ob2X = ob2 === 0 ? leftCircX : rightCircX;
+        c.beginPath();
+        c.moveTo(ob2X, outStartY);
+        c.lineTo(ob2X, outTopY);
+        c.strokeStyle = cScheme.outputColor;
+        c.lineWidth = beamW;
+        c.lineCap = 'butt';
+        c.stroke();
+      }
     }
     c.restore();
 
-    // --- White glow at rectangle center (matches prism glow, uses dimGlow variant for placeholder) ---
-    var glowR = dimGlow ? 10 * s : 7.5 * s;
-    var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
-    if (dimGlow) {
-      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
-      convGlow.addColorStop(0.6, 'rgba(240, 248, 255, 0.5)');
-      convGlow.addColorStop(0.8, 'rgba(220, 235, 255, 0.15)');
-      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
-    } else {
-      convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
-      convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
-      convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
-      convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    // --- White glow at each circle center ---
+    var glowR = dimGlow ? 8 * s : 6 * s;
+    for (var gi = 0; gi < 2; gi++) {
+      var gX = gi === 0 ? leftCircX : rightCircX;
+      var convGlow = c.createRadialGradient(gX, circY, 0, gX, circY, glowR);
+      if (dimGlow) {
+        convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        convGlow.addColorStop(0.2, 'rgba(255, 255, 255, 1.0)');
+        convGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+        convGlow.addColorStop(0.6, 'rgba(240, 248, 255, 0.5)');
+        convGlow.addColorStop(0.8, 'rgba(220, 235, 255, 0.15)');
+        convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+      } else {
+        convGlow.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        convGlow.addColorStop(0.15, 'rgba(255, 255, 255, 1.0)');
+        convGlow.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
+        convGlow.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
+        convGlow.addColorStop(0.75, 'rgba(220, 235, 255, 0.15)');
+        convGlow.addColorStop(1, 'rgba(200, 220, 255, 0)');
+      }
+      c.fillStyle = convGlow;
+      c.beginPath();
+      c.arc(gX, circY, glowR, 0, Math.PI * 2);
+      c.fill();
     }
-    c.fillStyle = convGlow;
-    c.beginPath();
-    c.arc(convX, convY, glowR, 0, Math.PI * 2);
-    c.fill();
 
-    // Small solid white core for placeholder to match prism convergence style
+    // Small solid white cores for placeholder
     if (dimGlow) {
       c.save();
       c.globalAlpha = 1.0;
       c.fillStyle = '#ffffff';
       c.beginPath();
-      c.arc(convX, convY, 2.4 * s, 0, Math.PI * 2);
+      c.arc(leftCircX, circY, circR, 0, Math.PI * 2);
+      c.fill();
+      c.beginPath();
+      c.arc(rightCircX, circY, circR, 0, Math.PI * 2);
       c.fill();
       c.restore();
     }
+
+    c.restore();
+  }
+
+  // ---- Combiner pip V1 (legacy, kept for card-viewer reference) ----
+  function drawCombinerPipV1(c, x, y, size, flip, dimGlow) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+
+    var s = size / 20;
+    var cScheme = COMBINER_SCHEMES[activeCombinerScheme];
+    var beamColors = cScheme.beamColors;
+    var rectHW = 5.13 * s;
+    var rectHH = 5.13 * s;
+    var rectOX = 0, rectOY = 0;
+    var beamW = 1.6 * s;
+    var outBeamW = beamW * 1.4;
+    var convX = rectOX, convY = rectOY;
+    var beamLen = rectHW * 1.5;
+    var outTopY = rectOY - rectHH - beamLen;
+    outTopY = outTopY + (rectOY - rectHH - outTopY) * 0.25;
+    var inLen = beamLen * 1.2;
+    var inStartOffsets = [{ x: -inLen, y: inLen }, { x: inLen, y: inLen }];
+    var inBeamColors = [beamColors[0], beamColors[beamColors.length - 1]];
+    var waveAmp = 2 * s, waveFreq = 2.5, waveSteps = 30;
+
+    // Drop shadow
+    c.save();
+    c.beginPath();
+    c.rect(rectOX - rectHW + 1.5 * s, rectOY - rectHH + 2 * s, rectHW * 2, rectHH * 2);
+    c.fillStyle = 'rgba(0, 0, 0, 0.12)';
+    c.fill();
+    c.restore();
+
+    // Rectangle body
+    c.beginPath();
+    c.rect(rectOX - rectHW, rectOY - rectHH, rectHW * 2, rectHH * 2);
+    var glassGrad = c.createLinearGradient(rectOX - rectHW, rectOY - rectHH, rectOX + rectHW, rectOY + rectHH);
+    glassGrad.addColorStop(0, 'rgba(210, 230, 250, 0.8)');
+    glassGrad.addColorStop(0.5, 'rgba(160, 195, 230, 0.55)');
+    glassGrad.addColorStop(1, 'rgba(110, 155, 200, 0.65)');
+    c.fillStyle = glassGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(40, 70, 110, 0.6)';
+    c.lineWidth = 0.8 * s;
+    c.stroke();
+
+    // Incoming beams
+    c.save();
+    c.globalAlpha = 0.85;
+    for (var ib = 0; ib < 2; ib++) {
+      var startX = rectOX + inStartOffsets[ib].x;
+      var startY = rectOY + inStartOffsets[ib].y;
+      c.beginPath();
+      for (var wi = 0; wi <= waveSteps; wi++) {
+        var t = 0.15 + (wi / waveSteps) * 0.85;
+        var bx = startX + (rectOX - startX) * t;
+        var by = startY + (rectOY - startY) * t;
+        var dx = rectOX - startX, dy = rectOY - startY;
+        var ln = Math.sqrt(dx * dx + dy * dy);
+        var px2 = -dy / ln, py2 = dx / ln;
+        var wave = Math.sin(t * waveFreq * Math.PI * 2) * waveAmp * (1 - t * t) * ((ib === 1) ? -1 : 1);
+        var fx = bx + px2 * wave, fy = by + py2 * wave;
+        if (wi === 0) c.moveTo(fx, fy); else c.lineTo(fx, fy);
+      }
+      c.strokeStyle = inBeamColors[ib];
+      c.lineWidth = beamW * 1.2;
+      c.stroke();
+    }
+    c.restore();
+
+    // Output beam
+    c.save();
+    c.globalAlpha = 0.85;
+    c.beginPath();
+    c.moveTo(rectOX, rectOY - rectHH * 0.5);
+    c.lineTo(rectOX, outTopY);
+    c.strokeStyle = cScheme.outputColor || '#ffffff';
+    c.lineWidth = outBeamW;
+    c.stroke();
+    c.restore();
+
+    // Glow
+    var glowR = 7.5 * s;
+    var cg = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
+    cg.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    cg.addColorStop(0.3, 'rgba(255, 255, 255, 1.0)');
+    cg.addColorStop(0.5, 'rgba(240, 248, 255, 0.53)');
+    cg.addColorStop(1, 'rgba(200, 220, 255, 0)');
+    c.fillStyle = cg;
+    c.beginPath();
+    c.arc(convX, convY, glowR, 0, Math.PI * 2);
+    c.fill();
 
     c.restore();
   }
@@ -1523,11 +1788,7 @@ var Renderer = (function () {
       } else if (isCustom && suit === 'hearts') {
         drawPrismPip(c, px, py, customSize, false);
       } else if (isCustom && suit === 'spades') {
-        if (activeBladeStyle === 'sai') {
-          drawSaiPip(c, px, py, customSize, false);
-        } else {
-          drawBladePip(c, px, py, customSize, false);
-        }
+        drawBladeAny(c, px, py, customSize, false);
       } else if (isCustom && suit === 'clubs') {
         drawCombinerPip(c, px, py, customSize, false);
       } else {
@@ -1603,11 +1864,7 @@ var Renderer = (function () {
     } else if (isCustomSuit(suit) && suit === 'hearts') {
       drawPrismPip(c, cx, suitPipY, 14, false);
     } else if (isCustomSuit(suit) && suit === 'spades') {
-      if (activeBladeStyle === 'sai') {
-        drawSaiPip(c, cx, suitPipY, 14, false);
-      } else {
-        drawBladePip(c, cx, suitPipY, 14, false);
-      }
+      drawBladeAny(c, cx, suitPipY, 14, false);
     } else if (isCustomSuit(suit) && suit === 'clubs') {
       drawCombinerPip(c, cx, suitPipY, 14, false);
     } else {
@@ -1820,11 +2077,7 @@ var Renderer = (function () {
       } else if (isCustomSuit(suit) && suit === 'spades') {
         c.save();
         c.globalAlpha = 0.45;
-        if (activeBladeStyle === 'sai') {
-          drawSaiPip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
-        } else {
-          drawBladePip(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
-        }
+        drawBladeAny(c, CARD_W / 2, CARD_H / 2, phPipSize, false);
         c.restore();
       } else if (isCustomSuit(suit) && suit === 'clubs') {
         c.save();
@@ -2613,11 +2866,7 @@ var Renderer = (function () {
       } else if (isCustomSuit(suit) && suit === 'hearts') {
         drawPrismPip(c, cx, cy, drawSize, false);
       } else if (isCustomSuit(suit) && suit === 'spades') {
-        if (activeBladeStyle === 'sai') {
-          drawSaiPip(c, cx, cy, drawSize, false);
-        } else {
-          drawBladePip(c, cx, cy, drawSize, false);
-        }
+        drawBladeAny(c, cx, cy, drawSize, false);
       } else if (isCustomSuit(suit) && suit === 'clubs') {
         drawCombinerPip(c, cx, cy, drawSize, false);
       } else {

@@ -754,7 +754,7 @@ html, body {
   min-width: 74px;
   height: 98px;
   border-radius: 8px;
-  background: #d0d0d0;
+  background: linear-gradient(135deg, #d4a017, #f0d060, #d4a017);
   border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   flex-direction: column;
