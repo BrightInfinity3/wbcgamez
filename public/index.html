@@ -217,7 +217,7 @@
     }
 
     .card-icon canvas.soloterra-canvas {
-      transform: scale(1.5);
+      transform: scale(1.65);
     }
 
     .card-header .card-icon {
@@ -238,6 +238,7 @@
 
     .card-header .card-title {
       margin-bottom: 0;
+      margin-top: -16px;
     }
 
     .card-desc {
@@ -604,42 +605,46 @@
       x.shadowBlur = 6;
       var cx = 24, cy = 22;
 
-      // Glow
+      // Glow (9.6 * 1.1 = 10.56)
       x.fillStyle = 'rgba(229, 57, 53, 0.25)';
       x.beginPath();
-      x.arc(cx, cy - 2, 9.6, 0, Math.PI * 2);
+      x.arc(cx, cy - 2, 10.6, 0, Math.PI * 2);
       x.fill();
 
-      // LED dome
+      // LED dome (6 * 1.1 = 6.6)
       x.fillStyle = red;
       x.beginPath();
-      x.arc(cx, cy - 2, 6, Math.PI, 0);
-      x.lineTo(cx + 6, cy + 1.2);
-      x.lineTo(cx - 6, cy + 1.2);
+      x.arc(cx, cy - 2, 6.6, Math.PI, 0);
+      x.lineTo(cx + 6.6, cy + 1.3);
+      x.lineTo(cx - 6.6, cy + 1.3);
       x.closePath();
       x.fill();
 
-      // Highlight
+      // Highlight (2.16 * 1.1 = 2.38)
       x.fillStyle = redLight;
       x.beginPath();
-      x.arc(cx - 1.8, cy - 4.5, 2.16, 0, Math.PI * 2);
+      x.arc(cx - 2, cy - 4.8, 2.38, 0, Math.PI * 2);
       x.fill();
 
-      // Base — centered
+      // Base — centered (width scaled 10%)
       x.fillStyle = '#888';
-      x.fillRect(cx - 6, cy + 1.2, 12, 3);
+      x.fillRect(cx - 6.6, cy + 1.3, 13.2, 3);
 
-      // Leads — cathode (left, shorter) and anode (right, longer)
+      // Leads — cathode (left, shorter, bent outward) and anode (right, longer, bent outward)
       x.strokeStyle = '#666';
       x.lineWidth = 1;
       x.lineCap = 'round';
+      // Left lead (shorter, bends left)
       x.beginPath();
-      x.moveTo(cx - 2.4, cy + 4.2);
-      x.lineTo(cx - 2.4, cy + 8);
+      x.moveTo(cx - 2.4, cy + 4.3);
+      x.lineTo(cx - 2.4, cy + 7);
+      x.lineTo(cx - 4.5, cy + 9);
       x.stroke();
+      // Right lead (longer, bends right)
       x.beginPath();
-      x.moveTo(cx + 2.4, cy + 4.2);
-      x.lineTo(cx + 2.4, cy + 11);
+      x.moveTo(cx + 2.4, cy + 4.3);
+      x.lineTo(cx + 2.4, cy + 8.5);
+      x.lineTo(cx + 4.5, cy + 11.5);
       x.stroke();
 
       // Rank "1" top-left (3px inset from card edge)
