@@ -151,7 +151,7 @@ var UI = (function () {
       el.textContent = suits[i % 4];
       el.style.left = Math.random() * 100 + '%';
       el.style.animationDelay = Math.random() * 8 + 's';
-      el.style.fontSize = (1 + Math.random() * 1.5) + 'rem';
+      el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
       container.appendChild(el);
     }
   }

@@ -52,9 +52,9 @@
   --text-gold: var(--gold-light);
 
   /* Card dimensions */
-  --card-w: 60px;
-  --card-h: 84px;
-  --card-radius: 6px;
+  --card-w: 4.17vmin;
+  --card-h: 5.83vmin;
+  --card-radius: 0.42vmin;
 
   /* Fonts */
   --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
@@ -101,10 +101,10 @@ html, body {
 /* ---------- Buttons ---------- */
 .btn {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 1.1vmin;
   padding: 0.6em 1.8em;
-  border: 2px solid var(--gold-dim);
-  border-radius: 8px;
+  border: 0.14vmin solid var(--gold-dim);
+  border-radius: 0.56vmin;
   background: transparent;
   color: var(--text-light);
   cursor: pointer;
@@ -166,12 +166,12 @@ html, body {
 }
 
 .btn-large {
-  font-size: 1.2rem;
+  font-size: 1.3vmin;
   padding: 0.8em 2.5em;
 }
 
 .btn-sm {
-  font-size: 0.85rem;
+  font-size: 0.9vmin;
   padding: 0.3em 0.8em;
 }
 
@@ -196,7 +196,7 @@ html, body {
   position: relative;
   z-index: 2;
   font-family: var(--font-display);
-  font-size: 8rem;
+  font-size: 8.9vmin;
   font-weight: 900;
   color: transparent;
   background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 40%, var(--gold-dim) 100%);
@@ -217,26 +217,26 @@ html, body {
 
 /* Title buttons: all same width, no wrap */
 .title-buttons .btn {
-  width: 280px;
+  width: 19.4vmin;
 }
 
 /* Play button ~1.5x the size of others */
 .btn-play {
-  font-size: 1.5rem;
+  font-size: 1.7vmin;
   padding: 0.7em 2.5em;
   font-weight: 700;
 }
 
 /* How to Play / Continue buttons — standard size */
 .btn-menu-size {
-  font-size: 1rem;
+  font-size: 1.1vmin;
   padding: 0.6em 1.8em;
 }
 
 /* Title card fan — centered on h1 text, behind it */
 .title-card-fan {
   position: absolute;
-  top: 4rem;
+  top: 4.4vmin;
   left: 50%;
   z-index: 1;
   opacity: 0.8;
@@ -244,11 +244,11 @@ html, body {
 
 .title-card {
   position: absolute;
-  width: 120px;
-  height: 168px;
-  border-radius: 10px;
+  width: 8.3vmin;
+  height: 11.7vmin;
+  border-radius: 0.7vmin;
   background: linear-gradient(135deg, var(--card-back-1), var(--card-back-2));
-  border: 4px solid rgba(255, 255, 255, 0.2);
+  border: 0.28vmin solid rgba(255, 255, 255, 0.2);
   transform-origin: 50% 85%;
 }
 
@@ -265,7 +265,7 @@ html, body {
 
 .float-suit {
   position: absolute;
-  font-size: 1.5rem;
+  font-size: 1.7vmin;
   opacity: 0;
   color: var(--gold-dim);
   animation: floatUp 8s linear infinite;
@@ -288,41 +288,46 @@ html, body {
   width: fit-content;
   background: var(--bg-panel);
   border: 1px solid rgba(212, 160, 23, 0.2);
-  border-radius: 16px;
-  padding: 2em 3em;
+  border-radius: 1.1vmin;
+  padding: 2.2vmin 3.3vmin;
   text-align: center;
 }
 
 .rules-panel h2 {
   font-family: var(--font-display);
   color: var(--gold-light);
-  font-size: 1.8rem;
-  margin-bottom: 1em;
+  font-size: 2vmin;
+  margin-bottom: 1.1vmin;
 }
 
 .rules-content {
   display: inline-block;
   text-align: left;
-  margin-bottom: 1.5em;
+  margin-bottom: 1.7vmin;
 }
 
 .rules-back-row {
   text-align: center;
 }
 
+.rules-back-row .btn {
+  font-size: 1.1vmin;
+  padding: 0.6vmin 2vmin;
+}
+
 .rule-section {
-  margin-bottom: 1em;
+  margin-bottom: 1.1vmin;
 }
 
 .rule-section h3 {
   font-family: var(--font-display);
   color: var(--gold);
-  font-size: 1rem;
-  margin-bottom: 0.1em;
+  font-size: 1.1vmin;
+  margin-bottom: 0.1vmin;
 }
 
 .rule-section p {
-  font-size: 0.95rem;
+  font-size: 1.05vmin;
   line-height: 1.5;
   color: var(--text-light);
 }
@@ -445,20 +450,20 @@ html, body {
 
 .table-felt {
   position: absolute;
-  inset: 60px;
+  inset: 4.2vmin;
   border-radius: 50%;
   background:
     radial-gradient(ellipse at 35% 35%, var(--felt-light) 0%, transparent 50%),
     radial-gradient(ellipse at center, var(--felt-mid) 0%, var(--felt-dark) 100%);
-  border: 12px solid var(--wood-mid);
+  border: 0.83vmin solid var(--wood-mid);
   box-shadow:
-    inset 0 0 60px rgba(0, 0, 0, 0.4),
-    inset 0 0 20px rgba(0, 0, 0, 0.2),
-    0 0 0 4px var(--wood-dark),
-    0 0 0 14px var(--wood-mid),
-    0 0 0 16px var(--wood-dark),
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    0 0 80px rgba(10, 68, 32, 0.3);
+    inset 0 0 4.2vmin rgba(0, 0, 0, 0.4),
+    inset 0 0 1.4vmin rgba(0, 0, 0, 0.2),
+    0 0 0 0.28vmin var(--wood-dark),
+    0 0 0 0.97vmin var(--wood-mid),
+    0 0 0 1.1vmin var(--wood-dark),
+    0 0.56vmin 2.2vmin rgba(0, 0, 0, 0.6),
+    0 0 5.6vmin rgba(10, 68, 32, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -491,7 +496,7 @@ html, body {
   width: 100%;
   height: 100%;
   z-index: 0;
-  border-radius: 8px;
+  border-radius: 0.56vmin;
 }
 
 .game-table .table-felt {
@@ -524,7 +529,7 @@ html, body {
   width: 7.8vmin;
   height: 7.8vmin;
   border-radius: 50%;
-  border: 3px solid var(--wood-mid);
+  border: 0.21vmin solid var(--wood-mid);
   background: rgba(20, 30, 25, 0.8);
   display: flex;
   align-items: center;
@@ -562,7 +567,7 @@ html, body {
   font-family: var(--font-display);
   font-size: 1.4vmin;
   color: var(--text-light);
-  margin-top: 3px;
+  margin-top: 0.21vmin;
   text-align: center;
   max-width: 12.5vmin;
   overflow: hidden;
@@ -582,12 +587,12 @@ html, body {
   color: var(--gold-light);
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid var(--gold-dim);
-  border-radius: 4px;
-  padding: 1px 4px;
-  margin-top: 3px;
+  border-radius: 0.28vmin;
+  padding: 0.07vmin 0.28vmin;
+  margin-top: 0.21vmin;
   text-align: center;
   max-width: 12.5vmin;
-  width: 160px;
+  width: 11.1vmin;
   outline: none;
 }
 
@@ -634,8 +639,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--wood-dark);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  border: 0.14vmin solid var(--wood-dark);
+  box-shadow: 0 0.14vmin 0.42vmin rgba(0, 0, 0, 0.4);
   z-index: 10;
 }
 
@@ -645,7 +650,7 @@ html, body {
   width: 3.6vmin;
   height: 3.6vmin;
   border-radius: 50%;
-  border: 2px dashed var(--bust-red);
+  border: 0.14vmin dashed var(--bust-red);
   background: rgba(211, 47, 47, 0.1);
   color: var(--bust-red);
   font-size: 1.9vmin;
@@ -691,7 +696,7 @@ html, body {
   width: 6.7vmin;
   height: 6.7vmin;
   border-radius: 50%;
-  border: 3px solid var(--wood-mid);
+  border: 0.21vmin solid var(--wood-mid);
   background: rgba(20, 30, 25, 0.9);
   overflow: hidden;
   position: relative;
@@ -709,7 +714,7 @@ html, body {
   font-family: var(--font-display);
   font-size: 1.3vmin;
   color: var(--text-light);
-  margin-top: 2px;
+  margin-top: 0.14vmin;
   text-align: center;
 }
 
@@ -731,7 +736,7 @@ html, body {
   font-weight: 600;
   padding: 0.1vmin 0.6vmin;
   border-radius: 0.8vmin;
-  margin-top: 2px;
+  margin-top: 0.14vmin;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   min-height: 1.5em;
@@ -769,7 +774,7 @@ html, body {
 .hand-area {
   position: absolute;
   display: flex;
-  gap: 2px;
+  gap: 0.14vmin;
   transform-origin: center;
   z-index: 3;
 }
@@ -800,7 +805,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 0.21vmin;
   transform: rotateY(180deg);
 }
 
@@ -818,7 +823,7 @@ html, body {
 .card-back-side::after {
   content: '30';
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.9vmin;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.12);
 }
@@ -830,49 +835,49 @@ html, body {
 /* Card face layout */
 .card-corner {
   position: absolute;
-  font-size: 0.6rem;
+  font-size: 0.6vmin;
   line-height: 1;
   text-align: center;
   font-weight: 700;
 }
 
 .card-corner-tl {
-  top: 3px;
-  left: 4px;
+  top: 0.21vmin;
+  left: 0.28vmin;
 }
 
 .card-corner-br {
-  bottom: 3px;
-  right: 4px;
+  bottom: 0.21vmin;
+  right: 0.28vmin;
   transform: rotate(180deg);
 }
 
 .card-rank {
   font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-size: 0.7vmin;
   display: block;
 }
 
 .card-suit-small {
-  font-size: 0.6rem;
+  font-size: 0.6vmin;
   display: block;
 }
 
 .card-center-suit {
-  font-size: 1.8rem;
+  font-size: 1.8vmin;
   opacity: 0.25;
 }
 
 .card-value-badge {
   position: absolute;
-  bottom: 3px;
+  bottom: 0.21vmin;
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--font-display);
-  font-size: 0.5rem;
+  font-size: 0.5vmin;
   background: rgba(0,0,0,0.08);
-  padding: 0px 4px;
-  border-radius: 4px;
+  padding: 0 0.28vmin;
+  border-radius: 0.28vmin;
   color: inherit;
   opacity: 0.6;
 }
@@ -1399,9 +1404,9 @@ html, body {
 
 .confetti-piece {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  top: -10px;
+  width: 0.56vmin;
+  height: 0.56vmin;
+  top: -0.7vmin;
   animation: confettiFall 3s linear forwards;
 }
 
@@ -1444,31 +1449,7 @@ html, body {
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 768px) {
-  :root {
-    --card-w: 45px;
-    --card-h: 63px;
-  }
-
-  .game-title { font-size: 5rem; }
-  .title-card-fan { top: 2.5rem; }
-
-  .table-felt { inset: 40px; }
-
-  .title-buttons .btn { width: 240px; }
-  .btn-play { font-size: 1.3rem; }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --card-w: 36px;
-    --card-h: 50px;
-  }
-
-  .game-title { font-size: 4rem; }
-  .title-card-fan { top: 2rem; }
-  .table-felt { inset: 25px; }
-}
+/* All sizing uses vmin units — no breakpoints needed for continuous scaling */
 
 /* ============================================================
    ONLINE MULTIPLAYER STYLES
@@ -1738,18 +1719,4 @@ html, body {
   padding: 0.5vmin 1.5vmin;
 }
 
-/* ---------- Responsive Online ---------- */
-@media (max-width: 480px) {
-  .online-lobby-seats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .lobby-code {
-    font-size: 1.4rem;
-  }
-
-  .online-seat-avatar {
-    width: 44px;
-    height: 44px;
-  }
-}
+/* All online elements use vmin — no breakpoints needed */

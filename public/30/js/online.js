@@ -172,6 +172,21 @@ var Online = (function () {
       Network.onMessage(handleHostMessage);
       Network.onDisconnect(handleGuestDisconnect);
 
+      // Reconnection handler — guest came back during grace period
+      Network.onReconnect(function (peerId) {
+        console.log('[Online] Guest reconnected:', peerId);
+        // They're still in our lobby/game state — just re-sync them
+        if (gamePhase === 'lobby') {
+          Network.send(peerId, { type: 'lobby_state', data: lobbyState });
+        } else if (gamePhase === 'playing') {
+          // Re-sync full game state
+          Network.send(peerId, {
+            type: 'game_state_sync',
+            data: { gameState: Game.serialize() }
+          });
+        }
+      });
+
       return code;
     });
   }
@@ -196,6 +211,37 @@ var Online = (function () {
       case 'leave':
         handleGuestLeave(fromPeerId);
         break;
+      case 'rejoin':
+        handleGuestRejoin(fromPeerId, message.data);
+        break;
+    }
+  }
+
+  function handleGuestRejoin(peerId, data) {
+    console.log('[Online] Guest rejoin:', data.username);
+    // Guest reconnected — update their connection mapping
+    // Their seats still exist from before, just re-map deviceId if peer changed
+    var oldDeviceId = data.deviceId;
+    if (oldDeviceId !== peerId && lobbyState.devices[oldDeviceId]) {
+      // Peer ID changed — remap
+      lobbyState.devices[peerId] = lobbyState.devices[oldDeviceId];
+      delete lobbyState.devices[oldDeviceId];
+      for (var i = 0; i < NUM_SEATS; i++) {
+        if (lobbyState.seats[i].deviceId === oldDeviceId) {
+          lobbyState.seats[i].deviceId = peerId;
+        }
+      }
+    }
+
+    // Re-sync state
+    if (gamePhase === 'lobby') {
+      Network.send(peerId, { type: 'lobby_state', data: lobbyState });
+      renderOnlineLobby();
+    } else if (gamePhase === 'playing') {
+      Network.send(peerId, {
+        type: 'game_state_sync',
+        data: { gameState: Game.serialize() }
+      });
     }
   }
 
@@ -462,9 +508,23 @@ var Online = (function () {
       // Set up message handler
       Network.onMessage(handleGuestMessage);
       Network.onDisconnect(function () {
-        // Host disconnected
-        showDisbandMessage('The host has left the game. Please create a new room to continue playing.');
+        // Host disconnected — after grace period expired in network layer
+        showDisbandMessage('Lost connection to host. Please create a new room to continue playing.');
         cleanup();
+      });
+
+      // Reconnection handler — guest reconnected to host after brief disconnect
+      Network.onReconnect(function () {
+        console.log('[Online] Guest reconnected to host, re-announcing...');
+        // Re-send join request so host knows we're back
+        Network.send('host', {
+          type: 'rejoin',
+          data: {
+            username: myUsername,
+            deviceId: myDeviceId,
+            playerCount: playerCount
+          }
+        });
       });
 
       // Send join request
