@@ -7,6 +7,29 @@ const PORT = process.env.PORT || 3000;
 // JSON body parsing for API
 app.use(express.json());
 
+// ---- Password-protected routes (beta/testing games) ----
+const BETA_PASSWORD = process.env.BETA_PASSWORD || "test123";
+const BETA_PATHS = ["/30"];
+
+app.use((req, res, next) => {
+  // Check if this request is for a protected path
+  const isProtected = BETA_PATHS.some(p => req.path === p || req.path.startsWith(p + "/"));
+  if (!isProtected) return next();
+
+  // Check Basic Auth header
+  const auth = req.headers.authorization;
+  if (auth) {
+    const [scheme, encoded] = auth.split(" ");
+    if (scheme === "Basic") {
+      const [user, pass] = Buffer.from(encoded, "base64").toString().split(":");
+      if (pass === BETA_PASSWORD) return next();
+    }
+  }
+
+  res.set("WWW-Authenticate", 'Basic realm="Beta Access"');
+  res.status(401).send("Password required");
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, "public")));
 
