@@ -677,8 +677,8 @@
       // Rank "1" top-left
       drawOne(cLeft + 4.5, cTop + 3);
 
-      // Rank "1" bottom-right (mirrored from top: 4.5 from right, 9.5 from bottom)
-      drawOne(cLeft + cW - 4.5, cTop + cH - 9.5);
+      // Rank "1" bottom-right (matching top's subpixel alignment)
+      drawOne(cLeft + cW - 4.5, cTop + cH - 10);
     })();
   </script>
 </body>
