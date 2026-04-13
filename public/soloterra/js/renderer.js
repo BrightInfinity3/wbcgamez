@@ -1008,20 +1008,22 @@ var Renderer = (function () {
   }
 
   // ---- Fan Blade pip drawing (V1, hidden/deactivated alternate — 5 blades, angled) ----
-  function drawFanPipV1(c, x, y, size, flip) {
+  function drawFanPip(c, x, y, size, flip) {
     c.save();
     c.translate(x, y);
     if (flip) c.rotate(Math.PI);
-    var s = size / 20;
+    var s = (size * 1.3) / 20;  // 30% larger
     var bScheme = BLADE_SCHEMES[activeBladeScheme];
-    var numBlades = 5;
+    var numBlades = 4;
     var fanR = 10 * s;
     var bladeW = 3.6 * s;
     var rivetR = 2.2 * s;
-    var startAngle = -Math.PI * 0.75;
-    var sweep = Math.PI * 0.75;
-    var midAngle = startAngle + sweep / 2;
-    c.translate(-Math.cos(midAngle) * fanR * 0.15, -Math.sin(midAngle) * fanR * 0.15);
+    var sweep = Math.PI * 0.7;          // 126° spread
+    var startAngle = -Math.PI / 2 - sweep / 2;  // centered upright
+    // Vertical centering: fan extends from -fanR (top) to rivetR (bottom)
+    var topExtent = -fanR * 0.95;
+    var botExtent = rivetR * 0.8;
+    c.translate(0, -(topExtent + botExtent) / 2);
     if (bScheme.hasGlow) {
       var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
       c.save(); c.globalAlpha = 0.3;
@@ -1054,8 +1056,8 @@ var Renderer = (function () {
     c.restore();
   }
 
-  // ---- Fan Blade pip drawing (V3 — ~160° dark semicircle with 4 blade tips protruding) ----
-  function drawFanPip(c, x, y, size, flip) {
+  // ---- Fan Blade pip drawing (V3 — ~160° dark semicircle with 4 blade tips, deactivated for future) ----
+  function drawFanPipV3(c, x, y, size, flip) {
     c.save();
     c.translate(x, y);
     if (flip) c.rotate(Math.PI);
@@ -1237,7 +1239,7 @@ var Renderer = (function () {
     outTopY = outTopY + (rectOY - rectHH - outTopY) * 0.25;
 
     // Input beams: one from bottom (straight up), one from middle-right (horizontal)
-    var inLen = beamLen * 1.9008;  // extended 10% more (1.728 * 1.1)
+    var inLen = beamLen * 1.728;  // undid last 10% extension
     var inStartOffsets = [
       { x: 0, y: inLen },       // bottom (straight up)
       { x: inLen, y: 0 }        // middle-right (horizontal, right angle with bottom beam)
@@ -1596,21 +1598,20 @@ var Renderer = (function () {
        [-0.025, 0.50, false], [0.325, 0.50, false], [0.675, 0.50, false], [1.025, 0.50, false],
        [0.15, 0.92, false], [0.50, 0.92, false], [0.85, 0.92, false]];
 
-  // Combiner-specific layouts: 0.6 horizontal gap (matching 6-card WIDE_6_LAYOUT)
-  // Rows of 2: 0.2/0.8, rows of 3: -0.1/0.5/1.1
-  var COMBINER_7_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
-       [-0.1, 0.5, false],  [0.5, 0.5, false],  [1.1, 0.5, false],
-       [0.2, 0.88, true],  [0.8, 0.88, true]];
-  var COMBINER_8_LAYOUT = [[-0.1, 0.12, false], [0.5, 0.12, false], [1.1, 0.12, false],
-       [0.2, 0.5, false],  [0.8, 0.5, false],
-       [-0.1, 0.88, true],  [0.5, 0.88, true],  [1.1, 0.88, true]];
-  var COMBINER_9_LAYOUT = [[-0.1, 0.12, false], [0.5, 0.12, false], [1.1, 0.12, false],
-       [-0.1, 0.5, false],  [0.5, 0.5, false],  [1.1, 0.5, false],
-       [-0.1, 0.88, true],  [0.5, 0.88, true],  [1.1, 0.88, true]];
-  var COMBINER_10_LAYOUT = [[0.2, 0.02, false], [0.8, 0.02, false],
-       [-0.1, 0.34, false], [0.5, 0.34, false], [1.1, 0.34, false],
-       [-0.1, 0.66, true],  [0.5, 0.66, true],  [1.1, 0.66, true],
-       [0.2, 0.98, true],  [0.8, 0.98, true]];
+  // Combiner-specific layouts: rows of 3 at 0.0/0.5/1.0 (wider than standard 0.08/0.50/0.92)
+  var COMBINER_7_LAYOUT = [[0.25, 0.12, false], [0.75, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.25, 0.88, true],  [0.75, 0.88, true]];
+  var COMBINER_8_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.25, 0.5, false],  [0.75, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var COMBINER_9_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var COMBINER_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
+       [0.0, 0.34, false], [0.5, 0.34, false], [1.0, 0.34, false],
+       [0.0, 0.66, true],  [0.5, 0.66, true],  [1.0, 0.66, true],
+       [0.25, 0.98, true],  [0.75, 0.98, true]];
 
   // Blade-specific layouts with more vertical spacing
   var BLADE_4_LAYOUT = [[0.15, 0.1, false], [0.85, 0.1, false], [0.15, 0.9, false], [0.85, 0.9, false]];
@@ -1809,6 +1810,12 @@ var Renderer = (function () {
         else if (count === 8) layout = COMBINER_8_LAYOUT;
         else if (count === 9) layout = COMBINER_9_LAYOUT;
         else if (count === 10) layout = COMBINER_10_LAYOUT;
+      } else if (suit === 'spades' && activeBladeStyle === 'fan') {
+        // Fan uses same wider spacing as prisms/combiners (0.0/0.5/1.0 for rows of 3)
+        if (count === 7) layout = PRISM_7_LAYOUT;
+        else if (count === 8) layout = PRISM_8_LAYOUT;
+        else if (count === 9) layout = PRISM_9_LAYOUT;
+        else if (count === 10) layout = PRISM_10_LAYOUT;
       } else if (suit === 'spades' && activeBladeStyle !== 'fan') {
         // Sai/Sword use blade-specific layouts
         if (count === 6) layout = BLADE_6_LAYOUT;
