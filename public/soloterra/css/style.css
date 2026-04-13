@@ -207,6 +207,21 @@ html, body {
   padding: 0.6em 1.8em;
 }
 
+.btn-home {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.8em;
+  color: var(--text-dim);
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.2s;
+  text-decoration: none;
+}
+.btn-home:hover {
+  opacity: 1;
+  color: var(--text-light);
+}
+
 /* Title card fan */
 .title-card-fan {
   position: absolute;
