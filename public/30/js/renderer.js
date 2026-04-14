@@ -587,7 +587,7 @@ var Renderer = (function () {
 
     // "30" watermark (gold-tinted, strong visibility)
     c.save();
-    c.font = '900 ' + Math.min(rx * 0.4, 60) + 'px Cinzel, Georgia, serif';
+    c.font = '900 ' + Math.round(rx * 0.13) + 'px Cinzel, Georgia, serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.fillStyle = 'rgba(200, 220, 180, 0.64)';
@@ -1133,23 +1133,44 @@ var Renderer = (function () {
     return { x: W / 2, y: H / 2 - 10 };
   }
 
+  function isPortrait() {
+    return H > W * 1.1;
+  }
+
+  function getVmin() {
+    return Math.min(W, H) / 100;
+  }
+
   function getTableRadii() {
     // Circular table: sized so players on wood border clear HUD/footer
     var r = Math.min(W * 0.33, H * 0.33);
+    // In portrait, cap radius so left/right seats stay on-screen
+    if (isPortrait()) {
+      var vm = getVmin();
+      var maxR = W / 2 - 12 * vm; // margin for seat avatar + accessories
+      r = Math.min(r, maxR);
+    }
     return { rx: r, ry: r };
   }
 
   function getSeatPositions(numSeats) {
     var center = getTableCenter();
     var radii = getTableRadii();
-    var r = radii.rx * 0.98;
+    var vm = getVmin();
+    // Base orbit on table edge
+    var baseR = radii.rx * 0.98;
+    // Compute elliptical orbit that fits within viewport
+    var marginX = 12 * vm; // seat + remove circle horizontal clearance
+    var marginY = 14 * vm; // seat + name + HUD vertical clearance
+    var rx = Math.min(baseR, W / 2 - marginX);
+    var ry = Math.min(baseR, H / 2 - marginY);
     var positions = [];
     // 8 evenly spaced positions, always 8 slots, starting from bottom (PI/2)
     for (var i = 0; i < numSeats; i++) {
       var angle = (Math.PI / 2) + (i * 2 * Math.PI / numSeats);
       positions.push({
-        x: center.x + r * Math.cos(angle),
-        y: center.y + r * Math.sin(angle),
+        x: center.x + rx * Math.cos(angle),
+        y: center.y + ry * Math.sin(angle),
         angle: angle
       });
     }
@@ -1166,13 +1187,19 @@ var Renderer = (function () {
   function getSeatOverlayPositions(numSeats) {
     var positions = [];
     var center = getTableCenter();
-    // Seats sit outside the wood border — extra room so status badges don't overlap cards
-    var or = Math.min(W * 0.42, H * 0.42);
+    var vm = getVmin();
+    // Base orbit outside the wood border
+    var baseOr = Math.min(W * 0.42, H * 0.42);
+    // Elliptical orbit that fits within viewport including seat accessories
+    var marginX = 12 * vm; // seat + score/dealer chip horizontal clearance
+    var marginY = 16 * vm; // seat + name + status + HUD/actions vertical clearance
+    var rx = Math.min(baseOr, W / 2 - marginX);
+    var ry = Math.min(baseOr, H / 2 - marginY);
     for (var i = 0; i < numSeats; i++) {
       var angle = (Math.PI / 2) + (i * 2 * Math.PI / numSeats);
       positions.push({
-        x: center.x + or * Math.cos(angle),
-        y: center.y + or * Math.sin(angle),
+        x: center.x + rx * Math.cos(angle),
+        y: center.y + ry * Math.sin(angle),
         angle: angle
       });
     }

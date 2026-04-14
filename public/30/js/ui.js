@@ -75,22 +75,43 @@ var UI = (function () {
     return 6.7 * getVmin(); // matches 6.7vmin in CSS
   }
 
+  // ---- Orientation Helper ----
+  function isPortrait() {
+    var vw = document.documentElement.clientWidth || window.innerWidth;
+    var vh = document.documentElement.clientHeight || window.innerHeight;
+    return vh > vw * 1.1;
+  }
+
   // ---- Dealer Chip Positioning ----
-  // Positions the dealer chip to the LEFT of the avatar, edges touching, vertically centered.
+  // Landscape: LEFT of avatar. Portrait: ABOVE the name (below avatar).
   function positionDealerChip(chipEl, avatarSize) {
     var avatarR = avatarSize / 2;
     var chipSize = 3.3 * getVmin(); // matches 3.3vmin in CSS
-    chipEl.style.left = 'calc(50% - ' + (avatarR + chipSize) + 'px)';
-    chipEl.style.top = (avatarR - chipSize / 2) + 'px';
+    if (isPortrait()) {
+      // Above the seat name, centered — position below avatar
+      chipEl.style.left = 'calc(50% - ' + (chipSize / 2) + 'px)';
+      chipEl.style.top = '-' + (chipSize + 1) + 'px';
+    } else {
+      chipEl.style.left = 'calc(50% - ' + (avatarR + chipSize) + 'px)';
+      chipEl.style.top = (avatarR - chipSize / 2) + 'px';
+    }
   }
 
   // ---- Remove Circle Positioning ----
-  // Positions the remove circle to the RIGHT of the avatar, edges touching, vertically centered.
+  // Landscape: RIGHT of avatar. Portrait: below the name.
   function positionRemoveCircle(circleEl, avatarSize) {
     var avatarR = avatarSize / 2;
     var circleSize = 3.6 * getVmin(); // matches 3.6vmin in CSS
-    circleEl.style.left = 'calc(50% + ' + avatarR + 'px)';
-    circleEl.style.top = (avatarR - circleSize / 2) + 'px';
+    if (isPortrait()) {
+      // Below the seat name, centered
+      circleEl.style.left = 'calc(50% - ' + (circleSize / 2) + 'px)';
+      circleEl.style.top = 'auto';
+      circleEl.style.bottom = '-' + (circleSize + 1) + 'px';
+    } else {
+      circleEl.style.left = 'calc(50% + ' + avatarR + 'px)';
+      circleEl.style.top = (avatarR - circleSize / 2) + 'px';
+      circleEl.style.bottom = 'auto';
+    }
   }
 
   // ---- Canvas State ----
@@ -151,8 +172,26 @@ var UI = (function () {
       el.textContent = suits[i % 4];
       el.style.left = Math.random() * 100 + '%';
       el.style.animationDelay = Math.random() * 8 + 's';
-      el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
+      if (isPortrait()) {
+        el.style.fontSize = (2.5 + Math.random() * 3) + 'vw';
+      } else {
+        el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
+      }
       container.appendChild(el);
+    }
+  }
+
+  // ---- Mobile Fullscreen ----
+  function isMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+           (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+  }
+  function requestFullscreen() {
+    if (!isMobile()) return;
+    var el = document.documentElement;
+    var rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (rfs) {
+      rfs.call(el).catch(function() { /* ignore — user gesture required */ });
     }
   }
 
@@ -160,6 +199,7 @@ var UI = (function () {
   function bindEvents() {
     // Title screen — Play enters setup on the game screen
     document.getElementById('btn-play').addEventListener('click', function () {
+      requestFullscreen();
       enterSetup();
     });
     document.getElementById('btn-how-to-play').addEventListener('click', function () {
@@ -281,6 +321,7 @@ var UI = (function () {
   function bindOnlineEvents() {
     // Title screen — Online button
     document.getElementById('btn-online').addEventListener('click', function () {
+      requestFullscreen();
       showScreen('screen-online');
     });
 
@@ -1664,7 +1705,19 @@ var UI = (function () {
         seat.style.left = pos.x + 'px';
         seat.style.top = (pos.y - getGameAvatarSize() / 2) + 'px';
 
-        // Top row: avatar + score side by side
+        var portrait = isPortrait();
+
+        // Dealer chip — ABOVE avatar in portrait, LEFT of avatar row in landscape
+        if (p.isDealer && portrait) {
+          var chip = document.createElement('div');
+          chip.className = 'seat-dealer-chip';
+          chip.textContent = 'D';
+          chip.style.position = 'relative';
+          chip.style.margin = '0 auto 0.2vmin';
+          seat.appendChild(chip);
+        }
+
+        // Top row: avatar + score side by side (landscape) or just avatar (portrait)
         var topRow = document.createElement('div');
         topRow.className = 'game-seat-top';
 
@@ -1674,24 +1727,26 @@ var UI = (function () {
         avatarWrap.appendChild(SpriteEngine.createSpriteImg(p.animal));
         topRow.appendChild(avatarWrap);
 
-        // Total (placeholder to reserve space) — beside avatar
-        var totalEl = document.createElement('div');
-        totalEl.className = 'game-seat-total';
-        totalEl.dataset.total = p.id;
-        totalEl.textContent = '\u00a0';
-        totalEl.style.visibility = 'hidden';
-        topRow.appendChild(totalEl);
+        if (!portrait) {
+          // Total beside avatar in landscape
+          var totalEl = document.createElement('div');
+          totalEl.className = 'game-seat-total';
+          totalEl.dataset.total = p.id;
+          totalEl.textContent = '\u00a0';
+          totalEl.style.visibility = 'hidden';
+          topRow.appendChild(totalEl);
 
-        // Dealer chip — to the left of the top row
-        if (p.isDealer) {
-          var chip = document.createElement('div');
-          chip.className = 'seat-dealer-chip';
-          chip.textContent = 'D';
-          chip.style.right = '100%';
-          chip.style.top = '50%';
-          chip.style.transform = 'translateY(-50%)';
-          chip.style.marginRight = '2px';
-          topRow.appendChild(chip);
+          // Dealer chip — to the left of the top row
+          if (p.isDealer) {
+            var chip2 = document.createElement('div');
+            chip2.className = 'seat-dealer-chip';
+            chip2.textContent = 'D';
+            chip2.style.right = '100%';
+            chip2.style.top = '50%';
+            chip2.style.transform = 'translateY(-50%)';
+            chip2.style.marginRight = '2px';
+            topRow.appendChild(chip2);
+          }
         }
 
         seat.appendChild(topRow);
@@ -1701,6 +1756,16 @@ var UI = (function () {
         nameEl.className = 'game-seat-name';
         nameEl.textContent = p.name;
         seat.appendChild(nameEl);
+
+        // Portrait: total below name instead of beside avatar
+        if (portrait) {
+          var totalEl = document.createElement('div');
+          totalEl.className = 'game-seat-total game-seat-total-below';
+          totalEl.dataset.total = p.id;
+          totalEl.textContent = '\u00a0';
+          totalEl.style.visibility = 'hidden';
+          seat.appendChild(totalEl);
+        }
 
         // Status (placeholder to reserve space)
         var statusEl = document.createElement('div');
