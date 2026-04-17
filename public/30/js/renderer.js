@@ -482,11 +482,16 @@ var Renderer = (function () {
     var c = tableCanvas.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    var cx = W / 2;
-    var cy = H / 2;
+    var center = getTableCenter();
+    var cx = center.x;
+    var cy = center.y;
     var radii = getTableRadii();
     var rx = radii.rx;
     var ry = radii.ry;
+    var wb = getWoodBorder();       // wood border thickness
+    var innerEdge = 0.5 * getVmin(); // thin shadow ring just outside felt
+    var filigree = 0.3 * getVmin();
+    var highlight = wb * 0.92;
 
     // Dark background
     c.fillStyle = '#080c0a';
@@ -512,8 +517,8 @@ var Renderer = (function () {
     c.fillRect(0, 0, W, H);
 
     // Wood border (outer ring)
-    drawEllipse(c, cx, cy, rx + 24, ry + 24);
-    var woodGrad = c.createRadialGradient(cx - rx * 0.3, cy - ry * 0.3, 0, cx, cy, Math.max(rx, ry) + 30);
+    drawEllipse(c, cx, cy, rx + wb, ry + wb);
+    var woodGrad = c.createRadialGradient(cx - rx * 0.3, cy - ry * 0.3, 0, cx, cy, Math.max(rx, ry) + wb * 1.25);
     woodGrad.addColorStop(0, WOOD_LIGHT);
     woodGrad.addColorStop(0.4, WOOD_MID);
     woodGrad.addColorStop(1, WOOD_DARK);
@@ -522,21 +527,21 @@ var Renderer = (function () {
 
     // Perlin noise wood grain (replaces random ellipses)
     c.save();
-    drawEllipse(c, cx, cy, rx + 24, ry + 24);
+    drawEllipse(c, cx, cy, rx + wb, ry + wb);
     c.clip();
     Textures.woodGrainTexture(c, W, H, cx, cy);
     c.restore();
 
     // Inner wood edge (deeper shadow for dimension)
-    drawEllipse(c, cx, cy, rx + 5, ry + 5);
-    var edgeShadow = c.createRadialGradient(cx, cy, Math.max(rx, ry), cx, cy, Math.max(rx, ry) + 6);
+    drawEllipse(c, cx, cy, rx + innerEdge, ry + innerEdge);
+    var edgeShadow = c.createRadialGradient(cx, cy, Math.max(rx, ry), cx, cy, Math.max(rx, ry) + innerEdge * 1.2);
     edgeShadow.addColorStop(0, WOOD_DARK);
     edgeShadow.addColorStop(1, 'rgba(15, 8, 2, 0.8)');
     c.fillStyle = edgeShadow;
     c.fill();
 
     // Gold filigree ring at felt/wood junction
-    Textures.drawFiligree(c, cx, cy, rx + 3, ry + 3);
+    Textures.drawFiligree(c, cx, cy, rx + filigree, ry + filigree);
 
     // Felt surface
     drawEllipse(c, cx, cy, rx, ry);
@@ -596,24 +601,24 @@ var Renderer = (function () {
 
     // Outer wood highlight (top edge reflection — warmer)
     c.save();
-    drawEllipse(c, cx, cy, rx + 22, ry + 22);
+    drawEllipse(c, cx, cy, rx + highlight, ry + highlight);
     c.clip();
-    var highlightGrad = c.createLinearGradient(cx, cy - ry - 30, cx, cy - ry + 12);
+    var highlightGrad = c.createLinearGradient(cx, cy - ry - wb * 1.25, cx, cy - ry + wb * 0.5);
     highlightGrad.addColorStop(0, 'rgba(255,220,160,0.18)');
     highlightGrad.addColorStop(1, 'rgba(255,220,160,0)');
     c.fillStyle = highlightGrad;
-    c.fillRect(cx - rx - 30, cy - ry - 30, (rx + 30) * 2, 55);
+    c.fillRect(cx - rx - wb * 1.25, cy - ry - wb * 1.25, (rx + wb * 1.25) * 2, wb * 2.3);
     c.restore();
 
     // Bottom edge subtle reflection
     c.save();
-    drawEllipse(c, cx, cy, rx + 22, ry + 22);
+    drawEllipse(c, cx, cy, rx + highlight, ry + highlight);
     c.clip();
-    var bottomHighlight = c.createLinearGradient(cx, cy + ry - 5, cx, cy + ry + 25);
+    var bottomHighlight = c.createLinearGradient(cx, cy + ry - innerEdge, cx, cy + ry + wb);
     bottomHighlight.addColorStop(0, 'rgba(255,200,140,0)');
     bottomHighlight.addColorStop(1, 'rgba(255,200,140,0.06)');
     c.fillStyle = bottomHighlight;
-    c.fillRect(cx - rx - 30, cy + ry - 5, (rx + 30) * 2, 40);
+    c.fillRect(cx - rx - wb * 1.25, cy + ry - innerEdge, (rx + wb * 1.25) * 2, wb * 1.7);
     c.restore();
 
     return tableCanvas;
@@ -623,16 +628,64 @@ var Renderer = (function () {
   //  TEXTURE BUILDING (Canvas 2D -> PIXI.Texture)
   // ================================================================
 
+  // Pre-rendered card canvases cache (can be built before PIXI init).
+  // Populated either lazily inside buildCardTextures, or ahead of time by precacheCardCanvases.
+  var _cardCanvasCache = {};
+  var _backCanvasCache = null;
+
   function buildCardTextures() {
     var suits = ['hearts', 'diamonds', 'clubs', 'spades'];
     var ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     for (var s = 0; s < suits.length; s++) {
       for (var r = 0; r < ranks.length; r++) {
         var key = ranks[r] + '_' + suits[s];
-        cardTextures[key] = PIXI.Texture.from(renderCardToImage(ranks[r], suits[s]));
+        var canvas = _cardCanvasCache[key] || renderCardToImage(ranks[r], suits[s]);
+        _cardCanvasCache[key] = canvas;
+        cardTextures[key] = PIXI.Texture.from(canvas);
       }
     }
-    backTexture = PIXI.Texture.from(renderCardBackToImage());
+    if (!_backCanvasCache) _backCanvasCache = renderCardBackToImage();
+    backTexture = PIXI.Texture.from(_backCanvasCache);
+  }
+
+  // Render all card canvases in the background so buildCardTextures is fast.
+  // Spreads work across frames using requestAnimationFrame to avoid blocking the UI.
+  function precacheCardCanvases() {
+    var suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+    var ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    var tasks = [];
+    for (var s = 0; s < suits.length; s++) {
+      for (var r = 0; r < ranks.length; r++) {
+        (function (rank, suit) {
+          var key = rank + '_' + suit;
+          tasks.push(function () {
+            if (!_cardCanvasCache[key]) {
+              _cardCanvasCache[key] = renderCardToImage(rank, suit);
+            }
+          });
+        })(ranks[r], suits[s]);
+      }
+    }
+    tasks.push(function () {
+      if (!_backCanvasCache) _backCanvasCache = renderCardBackToImage();
+    });
+
+    // Process a couple of textures per frame until done
+    function step() {
+      var frameDeadline = performance.now() + 8; // cap work at ~8ms per frame
+      while (tasks.length > 0 && performance.now() < frameDeadline) {
+        tasks.shift()();
+      }
+      if (tasks.length > 0) {
+        requestAnimationFrame(step);
+      }
+    }
+    // Use idle callback if available, else kick off immediately
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(function () { requestAnimationFrame(step); });
+    } else {
+      requestAnimationFrame(step);
+    }
   }
 
   function buildShadowTexture() {
@@ -903,20 +956,21 @@ var Renderer = (function () {
 
   function drawDeck(x, y, count) {
     var stackHeight = Math.min(count, 10);
-    var deckScale = 1.45;
+    // Deck scales proportionally with viewport (matches card scale)
+    var deckScale = 1.45 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
 
     // Bottom shadow for the whole stack
     if (stackHeight > 0) {
       var shadow = acquireSprite();
       shadow.texture = shadowTexture;
-      shadow.position.set(x + 3, y + 5);
+      shadow.position.set(x + 3 * (deckScale / 1.45), y + 5 * (deckScale / 1.45));
       shadow.scale.set(texScale);
       shadow.alpha = 0.2;
     }
 
     for (var i = 0; i < stackHeight; i++) {
-      var offset = i * 0.8;
+      var offset = i * 0.8 * (deckScale / 1.45);
       var s = acquireSprite();
       s.texture = backTexture;
       s.position.set(x - offset, y - offset);
@@ -1128,49 +1182,57 @@ var Renderer = (function () {
   //  TABLE GEOMETRY (seat positions, etc.)
   // ================================================================
 
-  function getTableCenter() {
-    // Shift up slightly to center between header/HUD and footer/action-bar
-    return { x: W / 2, y: H / 2 - 10 };
-  }
-
-  function isPortrait() {
-    return H > W * 1.1;
-  }
-
+  // Universal scale unit: 1 vmin in pixels. All game dimensions use this.
   function getVmin() {
     return Math.min(W, H) / 100;
   }
 
+  // Wood border thickness, in pixels (proportional to vmin for consistent look)
+  function getWoodBorder() {
+    return 2.5 * getVmin();
+  }
+
+  function getTableCenter() {
+    // Slight upward shift to balance room for HUD (top) and action buttons (bottom)
+    return { x: W / 2, y: H / 2 };
+  }
+
+  // Table felt radius — same for both portrait and landscape to look proportionally identical.
+  // 30vmin felt + 2.5vmin wood = 32.5vmin outer table radius.
+  // Game avatars tangent to outer: orbit = 32.5 + 3.35 = 35.85vmin.
+  // Avatar far edge = 35.85 + 3.35 = 39.2vmin. Plus ~4vmin for name = 43.2vmin.
+  // This fits in any viewport where min(W,H) >= 86.4vmin — always true by definition of vmin.
   function getTableRadii() {
-    // Circular table: sized so players on wood border clear HUD/footer
-    var r = Math.min(W * 0.33, H * 0.33);
-    // In portrait, cap radius so left/right seats stay on-screen
-    if (isPortrait()) {
-      var vm = getVmin();
-      var maxR = W / 2 - 12 * vm; // margin for seat avatar + accessories
-      r = Math.min(r, maxR);
-    }
+    var r = 30 * getVmin();
     return { rx: r, ry: r };
   }
 
+  // Returns the outer radius of the table (felt + wood border).
+  function getTableOuterRadius() {
+    var radii = getTableRadii();
+    return radii.rx + getWoodBorder();
+  }
+
+  // Setup seat avatar radius (matches .seat-avatar CSS: 7.8vmin)
+  function getSetupAvatarRadius() {
+    return 3.9 * getVmin();
+  }
+
+  // Game seat avatar radius (matches .game-seat-avatar CSS: 6.7vmin)
+  function getGameAvatarRadius() {
+    return 3.35 * getVmin();
+  }
+
+  // Setup seats — avatar's inner edge tangent to table's outer edge (avatar fully outside table).
   function getSeatPositions(numSeats) {
     var center = getTableCenter();
-    var radii = getTableRadii();
-    var vm = getVmin();
-    // Base orbit on table edge
-    var baseR = radii.rx * 0.98;
-    // Compute elliptical orbit that fits within viewport
-    var marginX = 12 * vm; // seat + remove circle horizontal clearance
-    var marginY = 14 * vm; // seat + name + HUD vertical clearance
-    var rx = Math.min(baseR, W / 2 - marginX);
-    var ry = Math.min(baseR, H / 2 - marginY);
+    var orbit = getTableOuterRadius() + getSetupAvatarRadius();
     var positions = [];
-    // 8 evenly spaced positions, always 8 slots, starting from bottom (PI/2)
     for (var i = 0; i < numSeats; i++) {
       var angle = (Math.PI / 2) + (i * 2 * Math.PI / numSeats);
       positions.push({
-        x: center.x + rx * Math.cos(angle),
-        y: center.y + ry * Math.sin(angle),
+        x: center.x + orbit * Math.cos(angle),
+        y: center.y + orbit * Math.sin(angle),
         angle: angle
       });
     }
@@ -1184,22 +1246,16 @@ var Renderer = (function () {
     };
   }
 
+  // Game seats — same rule: avatar's inner edge tangent to table's outer edge.
   function getSeatOverlayPositions(numSeats) {
     var positions = [];
     var center = getTableCenter();
-    var vm = getVmin();
-    // Base orbit outside the wood border
-    var baseOr = Math.min(W * 0.42, H * 0.42);
-    // Elliptical orbit that fits within viewport including seat accessories
-    var marginX = 12 * vm; // seat + score/dealer chip horizontal clearance
-    var marginY = 16 * vm; // seat + name + status + HUD/actions vertical clearance
-    var rx = Math.min(baseOr, W / 2 - marginX);
-    var ry = Math.min(baseOr, H / 2 - marginY);
+    var orbit = getTableOuterRadius() + getGameAvatarRadius();
     for (var i = 0; i < numSeats; i++) {
       var angle = (Math.PI / 2) + (i * 2 * Math.PI / numSeats);
       positions.push({
-        x: center.x + rx * Math.cos(angle),
-        y: center.y + ry * Math.sin(angle),
+        x: center.x + orbit * Math.cos(angle),
+        y: center.y + orbit * Math.sin(angle),
         angle: angle
       });
     }
@@ -1217,6 +1273,7 @@ var Renderer = (function () {
   return {
     init: init,
     resize: resize,
+    precacheCardCanvases: precacheCardCanvases,
     drawCard: drawCard,
     drawCardGlow: drawCardGlow,
     drawCardFlipping: drawCardFlipping,

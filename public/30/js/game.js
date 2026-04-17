@@ -192,13 +192,13 @@ var Game = (function () {
   }
 
   // ---- AI Decision ----
-  // Smart AI: considers bust probability from remaining deck,
-  // position relative to opponents, and tiebreaker implications.
+  // Smart AI: considers bust probability from remaining deck, position relative
+  // to opponents, threats still to act after us, and tiebreaker implications.
   function aiDecision(playerId) {
     var hand = state.hands[playerId];
     var total = CardSystem.handTotal(hand.cards);
 
-    // Never stay into a guaranteed loss
+    // Never stay into a guaranteed loss — forced draw
     if (stayWouldLose(playerId)) return 'draw';
 
     // Calculate bust probability from actual remaining deck cards
@@ -209,9 +209,14 @@ var Game = (function () {
     }
     var bustProb = state.deck.length > 0 ? bustCards / state.deck.length : 1;
 
-    // Find best opponent score and count active opponents
+    // No bust possible (deck has no too-big cards left) — always draw
+    if (bustCards === 0 && state.deck.length > 0 && total < 30) return 'draw';
+
+    // Find best opponent score and evaluate threats
     var bestOpponentTotal = 0;
-    var activeOpponents = 0;
+    var activeOpponents = 0;    // opponents who haven't stayed/busted yet
+    var catchUpThreats = 0;     // weighted count of opponents who can plausibly catch up
+
     for (var j = 0; j < state.turnOrder.length; j++) {
       var jid = state.turnOrder[j];
       if (jid === playerId) continue;
@@ -219,21 +224,47 @@ var Game = (function () {
       if (jh.busted) continue;
       var jt = CardSystem.handTotal(jh.cards);
       if (jt > bestOpponentTotal) bestOpponentTotal = jt;
-      if (!jh.stayed) activeOpponents++;
+      if (!jh.stayed) {
+        activeOpponents++;
+        // "Catch-up threat": can this opponent plausibly beat us?
+        // gainNeeded = points they need to strictly beat our total
+        var gainNeeded = total - jt + 1;
+        var theirRoom = 30 - jt;
+        if (gainNeeded <= 0) {
+          // They already meet/beat us (stayWouldLose catches the loss case above)
+          catchUpThreats += 1;
+        } else if (gainNeeded <= theirRoom && gainNeeded <= 10) {
+          // They can catch up in a single draw (card value 1-10) — serious threat
+          catchUpThreats += 1;
+        } else if (gainNeeded <= theirRoom) {
+          // Needs multiple draws — weaker threat
+          catchUpThreats += 0.5;
+        }
+      }
     }
 
     var lead = total - bestOpponentTotal;
 
-    // Comfortable lead (3+): stay unless drawing is very safe
-    if (lead >= 3) return bustProb <= 0.25 ? 'draw' : 'stay';
+    // Pick a bust-probability threshold based on lead and remaining threats.
+    // More threats still to act → lower tolerance for staying on a thin lead.
+    var threshold;
+    if (lead >= 5) {
+      // Huge lead — only draw if very safe
+      threshold = 0.20;
+    } else if (lead >= 3) {
+      // Comfortable lead — mildly more willing if threats remain
+      threshold = catchUpThreats >= 2 ? 0.35 : 0.25;
+    } else if (lead >= 1) {
+      // Thin lead — scale aggressiveness with number of realistic threats
+      threshold = catchUpThreats >= 2 ? 0.50
+                : catchUpThreats >= 1 ? 0.45
+                : 0.30; // no threats left — lock it in
+    } else {
+      // Tied or behind — draw aggressively since staying likely loses
+      threshold = 0.55;
+    }
 
-    // Moderate lead: stay unless drawing is fairly safe
-    if (lead >= 1) return bustProb <= 0.4 ? 'draw' : 'stay';
-
-    // Tied or behind on total (but not a guaranteed loss via tiebreaker,
-    // since stayWouldLose already returned false above).
-    // Draw more aggressively — more cards helps tiebreaker.
-    return bustProb <= 0.5 ? 'draw' : 'stay';
+    return bustProb <= threshold ? 'draw' : 'stay';
   }
 
   // ---- Advance Turn ----

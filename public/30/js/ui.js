@@ -10,8 +10,10 @@ var UI = (function () {
 
   // ---- Constants ----
   var NUM_TABLE_SEATS = 8;
-  // Fixed seat fill order: bottom, top, left, right, bottom-left, top-right, top-left, bottom-right
-  var SEAT_FILL_ORDER = [0, 4, 2, 6, 1, 5, 3, 7];
+  // Fixed seat fill order: top, bottom, left, right, top-left, bottom-right, bottom-left, top-right
+  // Slot numbers (8 seats around table, 0=bottom, going counter-clockwise):
+  //   0=bottom, 1=bottom-left, 2=left, 3=top-left, 4=top, 5=top-right, 6=right, 7=bottom-right
+  var SEAT_FILL_ORDER = [4, 0, 2, 6, 3, 7, 1, 5];
   var DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4',
                        'Player 5', 'Player 6', 'Player 7', 'Player 8'];
   // Animal-to-name mapping — each animal has 3 possible names, chosen randomly
@@ -75,43 +77,22 @@ var UI = (function () {
     return 6.7 * getVmin(); // matches 6.7vmin in CSS
   }
 
-  // ---- Orientation Helper ----
-  function isPortrait() {
-    var vw = document.documentElement.clientWidth || window.innerWidth;
-    var vh = document.documentElement.clientHeight || window.innerHeight;
-    return vh > vw * 1.1;
-  }
-
   // ---- Dealer Chip Positioning ----
-  // Landscape: LEFT of avatar. Portrait: ABOVE the name (below avatar).
+  // Positions the dealer chip to the LEFT of the avatar, edges touching, vertically centered.
   function positionDealerChip(chipEl, avatarSize) {
     var avatarR = avatarSize / 2;
     var chipSize = 3.3 * getVmin(); // matches 3.3vmin in CSS
-    if (isPortrait()) {
-      // Above the seat name, centered — position below avatar
-      chipEl.style.left = 'calc(50% - ' + (chipSize / 2) + 'px)';
-      chipEl.style.top = '-' + (chipSize + 1) + 'px';
-    } else {
-      chipEl.style.left = 'calc(50% - ' + (avatarR + chipSize) + 'px)';
-      chipEl.style.top = (avatarR - chipSize / 2) + 'px';
-    }
+    chipEl.style.left = 'calc(50% - ' + (avatarR + chipSize) + 'px)';
+    chipEl.style.top = (avatarR - chipSize / 2) + 'px';
   }
 
   // ---- Remove Circle Positioning ----
-  // Landscape: RIGHT of avatar. Portrait: below the name.
+  // Positions the remove circle to the RIGHT of the avatar, edges touching, vertically centered.
   function positionRemoveCircle(circleEl, avatarSize) {
     var avatarR = avatarSize / 2;
     var circleSize = 3.6 * getVmin(); // matches 3.6vmin in CSS
-    if (isPortrait()) {
-      // Below the seat name, centered
-      circleEl.style.left = 'calc(50% - ' + (circleSize / 2) + 'px)';
-      circleEl.style.top = 'auto';
-      circleEl.style.bottom = '-' + (circleSize + 1) + 'px';
-    } else {
-      circleEl.style.left = 'calc(50% + ' + avatarR + 'px)';
-      circleEl.style.top = (avatarR - circleSize / 2) + 'px';
-      circleEl.style.bottom = 'auto';
-    }
+    circleEl.style.left = 'calc(50% + ' + avatarR + 'px)';
+    circleEl.style.top = (avatarR - circleSize / 2) + 'px';
   }
 
   // ---- Canvas State ----
@@ -128,6 +109,10 @@ var UI = (function () {
     bindOnlineEvents();
     createFloatingSuits();
     showScreen('screen-title');
+    // Warm up card-texture canvases in the background so Local Play starts fast.
+    if (typeof Renderer !== 'undefined' && Renderer.precacheCardCanvases) {
+      try { Renderer.precacheCardCanvases(); } catch (e) { /* non-fatal */ }
+    }
   }
 
   function initSetupSeats() {
@@ -172,11 +157,7 @@ var UI = (function () {
       el.textContent = suits[i % 4];
       el.style.left = Math.random() * 100 + '%';
       el.style.animationDelay = Math.random() * 8 + 's';
-      if (isPortrait()) {
-        el.style.fontSize = (2.5 + Math.random() * 3) + 'vw';
-      } else {
-        el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
-      }
+      el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
       container.appendChild(el);
     }
   }
@@ -922,13 +903,14 @@ var UI = (function () {
     // Use fixed seat fill order
     var finalSeats = SEAT_FILL_ORDER.slice(0, playerCount);
 
-    // First seat is human (seat 0), rest are AI — each gets a random animal
+    // Slot 0 (bottom) is always the human; all other slots are AI.
+    // Each player gets a random animal; last-added player is the dealer.
     for (var k = 0; k < finalSeats.length; k++) {
       var idx = finalSeats[k];
       var animal = getRandomAnimal();
       setupSeats[idx].occupied = true;
       setupSeats[idx].animal = animal;
-      setupSeats[idx].isHuman = (k === 0);
+      setupSeats[idx].isHuman = (idx === 0);
       setupSeats[idx].name = getAnimalName(animal);
       setupSeats[idx].isDealer = (k === finalSeats.length - 1);
       addOrder.push(idx);
@@ -1111,7 +1093,9 @@ var UI = (function () {
     setupSeats[seatIdx].occupied = true;
     setupSeats[seatIdx].animal = animal;
     setupSeats[seatIdx].name = getAnimalName(animal);
-    setupSeats[seatIdx].isHuman = false;
+    // Slot 0 (bottom) is always the human if no human exists yet
+    var hasHuman = setupSeats.some(function (s) { return s.occupied && s.isHuman; });
+    setupSeats[seatIdx].isHuman = (seatIdx === 0 && !hasHuman);
     setupSeats[seatIdx].nameEdited = false;
 
     // If no dealer set, make this one the dealer
@@ -1371,6 +1355,13 @@ var UI = (function () {
     return promise;
   }
 
+  // Viewport-proportional card scale (matches drawGameFrame)
+  function getCardScale() {
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+    return 1.45 * (Math.min(W, H) / 1080);
+  }
+
   function animateCanvasDeal(card, playerId, seatIndex) {
     return new Promise(function (resolve) {
       var tableCenter = Renderer.getTableCenter();
@@ -1383,7 +1374,7 @@ var UI = (function () {
         faceUp: false,
         x: tableCenter.x,
         y: tableCenter.y,
-        scale: 1.45
+        scale: getCardScale()
       });
 
       Renderer.animate(350, function (t) {
@@ -1413,7 +1404,7 @@ var UI = (function () {
         flipProgress: 0,
         x: tableCenter.x,
         y: tableCenter.y,
-        scale: 1.45
+        scale: getCardScale()
       });
 
       Renderer.animate(500, function (t) {
@@ -1705,21 +1696,30 @@ var UI = (function () {
         seat.style.left = pos.x + 'px';
         seat.style.top = (pos.y - getGameAvatarSize() / 2) + 'px';
 
-        var portrait = isPortrait();
+        // Total score — ABOVE the avatar, centered
+        var totalEl = document.createElement('div');
+        totalEl.className = 'game-seat-total';
+        totalEl.dataset.total = p.id;
+        totalEl.textContent = '\u00a0';
+        totalEl.style.visibility = 'hidden';
+        seat.appendChild(totalEl);
 
-        // Dealer chip — ABOVE avatar in portrait, LEFT of avatar row in landscape
-        if (p.isDealer && portrait) {
+        // Middle row: dealer chip (left) + avatar (center) + status (right)
+        var topRow = document.createElement('div');
+        topRow.className = 'game-seat-top';
+
+        // Dealer chip — to the LEFT of the avatar
+        if (p.isDealer) {
           var chip = document.createElement('div');
           chip.className = 'seat-dealer-chip';
           chip.textContent = 'D';
-          chip.style.position = 'relative';
-          chip.style.margin = '0 auto 0.2vmin';
-          seat.appendChild(chip);
+          topRow.appendChild(chip);
+        } else {
+          // Invisible spacer so avatar stays centered
+          var spacer = document.createElement('div');
+          spacer.className = 'seat-dealer-chip-spacer';
+          topRow.appendChild(spacer);
         }
-
-        // Top row: avatar + score side by side (landscape) or just avatar (portrait)
-        var topRow = document.createElement('div');
-        topRow.className = 'game-seat-top';
 
         // Avatar
         var avatarWrap = document.createElement('div');
@@ -1727,53 +1727,21 @@ var UI = (function () {
         avatarWrap.appendChild(SpriteEngine.createSpriteImg(p.animal));
         topRow.appendChild(avatarWrap);
 
-        if (!portrait) {
-          // Total beside avatar in landscape
-          var totalEl = document.createElement('div');
-          totalEl.className = 'game-seat-total';
-          totalEl.dataset.total = p.id;
-          totalEl.textContent = '\u00a0';
-          totalEl.style.visibility = 'hidden';
-          topRow.appendChild(totalEl);
-
-          // Dealer chip — to the left of the top row
-          if (p.isDealer) {
-            var chip2 = document.createElement('div');
-            chip2.className = 'seat-dealer-chip';
-            chip2.textContent = 'D';
-            chip2.style.right = '100%';
-            chip2.style.top = '50%';
-            chip2.style.transform = 'translateY(-50%)';
-            chip2.style.marginRight = '2px';
-            topRow.appendChild(chip2);
-          }
-        }
-
-        seat.appendChild(topRow);
-
-        // Name
-        var nameEl = document.createElement('div');
-        nameEl.className = 'game-seat-name';
-        nameEl.textContent = p.name;
-        seat.appendChild(nameEl);
-
-        // Portrait: total below name instead of beside avatar
-        if (portrait) {
-          var totalEl = document.createElement('div');
-          totalEl.className = 'game-seat-total game-seat-total-below';
-          totalEl.dataset.total = p.id;
-          totalEl.textContent = '\u00a0';
-          totalEl.style.visibility = 'hidden';
-          seat.appendChild(totalEl);
-        }
-
-        // Status (placeholder to reserve space)
+        // Status (placeholder, reserve space) — RIGHT of avatar
         var statusEl = document.createElement('div');
         statusEl.className = 'game-seat-status';
         statusEl.dataset.status = p.id;
         statusEl.textContent = '\u00a0';
         statusEl.style.visibility = 'hidden';
-        seat.appendChild(statusEl);
+        topRow.appendChild(statusEl);
+
+        seat.appendChild(topRow);
+
+        // Name — below avatar row
+        var nameEl = document.createElement('div');
+        nameEl.className = 'game-seat-name';
+        nameEl.textContent = p.name;
+        seat.appendChild(nameEl);
 
         ring.appendChild(seat);
 
@@ -1793,10 +1761,14 @@ var UI = (function () {
 
     var tableCenter = Renderer.getTableCenter();
     var seatPositions = Renderer.getSeatPositions(NUM_TABLE_SEATS);
-    var cardScale = 1.45;
-    var cardSpacing = 42;
+    // Card dimensions scale proportionally with viewport so they look the same
+    // relative to table on every device (not comically huge on mobile).
+    var vmin = Math.min(W, H);
+    var viewScale = vmin / 1080; // reference: 1080p desktop
+    var cardScale = 1.45 * viewScale;
+    var cardSpacing = 42 * viewScale;
     var CARDS_PER_ROW = 3;
-    var ROW_INSET = 36; // how far inward each new row shifts toward center
+    var ROW_INSET = 36 * viewScale; // how far inward each new row shifts toward center
 
     // Draw deck pile at table center
     Renderer.drawDeck(tableCenter.x, tableCenter.y, Game.getDeckCount());
