@@ -1359,7 +1359,7 @@ var UI = (function () {
   function getCardScale() {
     var W = window.innerWidth;
     var H = window.innerHeight;
-    return 1.45 * (Math.min(W, H) / 1080);
+    return 1.2 * (Math.min(W, H) / 1080);
   }
 
   function animateCanvasDeal(card, playerId, seatIndex) {
@@ -1765,10 +1765,10 @@ var UI = (function () {
     // relative to table on every device (not comically huge on mobile).
     var vmin = Math.min(W, H);
     var viewScale = vmin / 1080; // reference: 1080p desktop
-    var cardScale = 1.45 * viewScale;
-    var cardSpacing = 42 * viewScale;
+    var cardScale = 1.2 * viewScale;
+    var cardSpacing = 35 * viewScale;
     var CARDS_PER_ROW = 3;
-    var ROW_INSET = 36 * viewScale; // how far inward each new row shifts toward center
+    var ROW_INSET = 30 * viewScale; // how far inward each new row shifts toward center
 
     // Draw deck pile at table center
     Renderer.drawDeck(tableCenter.x, tableCenter.y, Game.getDeckCount());

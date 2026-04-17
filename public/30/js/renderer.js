@@ -957,20 +957,21 @@ var Renderer = (function () {
   function drawDeck(x, y, count) {
     var stackHeight = Math.min(count, 10);
     // Deck scales proportionally with viewport (matches card scale)
-    var deckScale = 1.45 * (Math.min(W, H) / 1080);
+    var deckScale = 1.2 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
+    var offsetScale = deckScale / 1.2;
 
     // Bottom shadow for the whole stack
     if (stackHeight > 0) {
       var shadow = acquireSprite();
       shadow.texture = shadowTexture;
-      shadow.position.set(x + 3 * (deckScale / 1.45), y + 5 * (deckScale / 1.45));
+      shadow.position.set(x + 3 * offsetScale, y + 5 * offsetScale);
       shadow.scale.set(texScale);
       shadow.alpha = 0.2;
     }
 
     for (var i = 0; i < stackHeight; i++) {
-      var offset = i * 0.8 * (deckScale / 1.45);
+      var offset = i * 0.8 * offsetScale;
       var s = acquireSprite();
       s.texture = backTexture;
       s.position.set(x - offset, y - offset);
@@ -1240,9 +1241,12 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
+    // Place the hand 45% of the way from the seat toward the center.
+    // Keeps cards clearly on the felt (inside the wood border) and away from
+    // the avatar + name/score labels hugging the table edge.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.25,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.25
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.45,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.45
     };
   }
 
