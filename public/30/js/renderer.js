@@ -795,9 +795,33 @@ var Renderer = (function () {
     app = new PIXI.Application();
     dpr = window.devicePixelRatio || 1;
 
-    var parent = canvasEl.parentElement;
-    W = parent.clientWidth;
-    H = parent.clientHeight;
+    // Use window dimensions directly — canvas parent can be 0x0 during CSS
+    // screen transitions, which would initialize the app at 0x0.
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    // WebGL context loss handler — prevent the browser from treating the
+    // loss as final so it can be restored. Without this, if the GPU is
+    // stressed or the tab is backgrounded too long, the canvas goes blank
+    // permanently and the game never recovers.
+    canvasEl.addEventListener('webglcontextlost', function (e) {
+      e.preventDefault();
+    }, false);
+    canvasEl.addEventListener('webglcontextrestored', function () {
+      // Rebuild everything the GPU needs
+      try {
+        _cardCanvasCache = {};
+        _backCanvasCache = null;
+        cardTextures = {};
+        backTexture = null;
+        buildCardTextures();
+        buildShadowTexture();
+        buildGlowTexture();
+        buildParticleTexture();
+        updateTableTexture();
+        initPixiParticles();
+      } catch (err) { /* ignore — render loop will retry */ }
+    }, false);
 
     initPromise = app.init({
       canvas: canvasEl,
@@ -851,10 +875,12 @@ var Renderer = (function () {
   }
 
   function resize() {
-    if (!app) return;
-    var parent = app.canvas.parentElement;
-    W = parent.clientWidth;
-    H = parent.clientHeight;
+    if (!app || !app.renderer) return;
+    // Use window dimensions directly. The canvas parent can briefly report 0
+    // during CSS screen transitions, which would render the table blank.
+    W = window.innerWidth;
+    H = window.innerHeight;
+    if (W === 0 || H === 0) return;
     app.renderer.resize(W, H);
     updateTableTexture();
     initPixiParticles();
@@ -1194,8 +1220,11 @@ var Renderer = (function () {
   }
 
   function getTableCenter() {
-    // Slight upward shift to balance room for HUD (top) and action buttons (bottom)
-    return { x: W / 2, y: H / 2 };
+    // Shift the table center slightly below geometric center to leave margin
+    // at the top for the HUD and top character's score row. Without this,
+    // the top-row top (at ~cy - 46.6vmin) can go off-screen on landscape
+    // aspect ratios where vmin = H.
+    return { x: W / 2, y: H / 2 + 2.5 * getVmin() };
   }
 
   // Table felt radius — same for both portrait and landscape to look proportionally identical.

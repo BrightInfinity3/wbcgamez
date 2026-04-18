@@ -128,14 +128,21 @@ var UI = (function () {
     if (resizeListenerAdded) return;
     resizeListenerAdded = true;
 
-    var scheduled = false;
+    // Debounce: only run handleViewportChange after the dimensions have been
+    // stable for ~100ms. Prevents expensive table-texture/particle rebuilds
+    // on every intermediate step during URL-bar animations, DevTools resize,
+    // or window drag on desktop.
+    var debounceTimer = null;
+    var lastW = 0, lastH = 0;
     function schedule() {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(function () {
-        scheduled = false;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        debounceTimer = null;
+        var w = window.innerWidth, h = window.innerHeight;
+        if (w === lastW && h === lastH) return; // no-op if nothing changed
+        lastW = w; lastH = h;
         handleViewportChange();
-      });
+      }, 100);
     }
 
     // Standard resize
@@ -145,10 +152,12 @@ var UI = (function () {
     // series of delayed ticks to catch the correct dimensions after the URL
     // bar and status bar redraw.
     window.addEventListener('orientationchange', function () {
-      handleViewportChange();
-      setTimeout(handleViewportChange, 100);
-      setTimeout(handleViewportChange, 300);
-      setTimeout(handleViewportChange, 600);
+      // Force-run after each delay (bypass the no-op guard in schedule)
+      var forceRun = function () { lastW = -1; schedule(); };
+      forceRun();
+      setTimeout(forceRun, 100);
+      setTimeout(forceRun, 300);
+      setTimeout(forceRun, 600);
     });
 
     // visualViewport captures changes that `resize` misses on mobile (like
