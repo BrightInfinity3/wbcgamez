@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=85">
+  <link rel="stylesheet" href="css/style.css?v=86">
 </head>
 <body>
 
@@ -216,6 +216,25 @@
       </div>
     </div>
 
+    <!-- Device-leave popup (host only). Shown when another device leaves
+         (explicit Leave Room or 5-min grace period expiring). Host picks
+         AI-auto-play or Human (host-controlled) per departed player. -->
+    <div class="device-leave-overlay" id="device-leave-overlay" style="display:none">
+      <div class="device-leave-panel">
+        <h3 id="device-leave-title">A player has left</h3>
+        <p class="device-leave-subtitle">Choose how to handle each of their players:</p>
+        <div class="device-leave-players" id="device-leave-players"></div>
+        <div class="device-leave-actions">
+          <button class="btn btn-gold" id="btn-device-leave-confirm">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global toast banner — short notification shown to all players
+         when something room-level happens (e.g. a device leaving).
+         Auto-dismisses after a few seconds. -->
+    <div class="game-toast" id="game-toast" style="display:none"></div>
+
     <!-- Online animal picker overlay -->
     <div class="character-picker" id="online-animal-picker" style="display:none">
       <div class="picker-panel">
@@ -295,16 +314,16 @@
   <!-- Scripts in dependency order -->
   <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1/dist/peerjs.min.js"></script>
-  <script src="js/sprites.js?v=85"></script>
-  <script src="js/cards.js?v=85"></script>
-  <script src="js/game.js?v=85"></script>
-  <script src="js/animations.js?v=85"></script>
-  <script src="js/textures.js?v=85"></script>
-  <script src="js/renderer.js?v=85"></script>
-  <script src="js/save.js?v=85"></script>
-  <script src="js/network.js?v=85"></script>
-  <script src="js/online.js?v=85"></script>
-  <script src="js/ui.js?v=85"></script>
+  <script src="js/sprites.js?v=86"></script>
+  <script src="js/cards.js?v=86"></script>
+  <script src="js/game.js?v=86"></script>
+  <script src="js/animations.js?v=86"></script>
+  <script src="js/textures.js?v=86"></script>
+  <script src="js/renderer.js?v=86"></script>
+  <script src="js/save.js?v=86"></script>
+  <script src="js/network.js?v=86"></script>
+  <script src="js/online.js?v=86"></script>
+  <script src="js/ui.js?v=86"></script>
 
 </body>
 </html>

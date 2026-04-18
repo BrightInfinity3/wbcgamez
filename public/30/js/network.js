@@ -42,14 +42,15 @@ var Network = (function () {
   // corporate/guest firewalls. Each guest's PeerJS picks whichever pairs
   // successfully with the host during ICE gathering.
   var TURN_SERVERS = [
-    // Open Relay Project (metered.ca) — free public demo, shared creds.
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    // ExpressTURN.com — free community TURN, public demo creds.
-    { urls: 'turn:relay1.expressturn.com:3478', username: 'ef9WOA39BIBJY9HREJ', credential: 'zkR3gWmKWQYCASWZ' },
-    { urls: 'turn:relay1.expressturn.com:3480?transport=tcp', username: 'ef9WOA39BIBJY9HREJ', credential: 'zkR3gWmKWQYCASWZ' }
+    // Open Relay Project (https://www.metered.ca/tools/openrelay/) —
+    // free public TURN with well-documented shared demo credentials.
+    // UDP 80 / UDP 443 / TCP 443 / TLS 443 so at least one port makes
+    // it through corporate / guest Wi-Fi filtering.
+    { urls: 'turn:openrelay.metered.ca:80',                    username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:80?transport=tcp',      username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443',                   username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp',     username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443?transport=tcp',    username: 'openrelayproject', credential: 'openrelayproject' }
   ];
 
   var STUN_SERVERS = [
@@ -336,9 +337,13 @@ var Network = (function () {
         // 10–15s on congested networks). 20s total before giving up.
         setTimeout(function () {
           if (!resolved) {
-            var hint = relayOnly
-              ? ' This can happen when the Wi-Fi network blocks WebRTC relay traffic. Try switching one device to its mobile data / cellular hotspot.'
-              : '';
+            var hint;
+            if (relayOnly) {
+              // Both passes have failed. Give something actionable.
+              hint = ' Every WebRTC path (direct, STUN, and TURN relay) was blocked by the network. If the host is on the same Wi-Fi, have one device join via a cellular hotspot instead. (Tech: open DevTools → Console on the failing device and share any red "[Network]" or ICE lines — they say exactly which stage failed.)';
+            } else {
+              hint = ' Retrying through a relay…';
+            }
             fail('Could not reach room ' + roomCode + '.' + hint);
           }
         }, 20000);
