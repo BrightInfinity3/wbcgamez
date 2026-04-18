@@ -1783,8 +1783,8 @@ var UI = (function () {
         // The avatar sits UNDER the .game-seat-top-row (dealer + score + status),
         // so the seat's top must be shifted up by that row's reserved height
         // so the avatar itself is centered at pos.y (tangent to the table's
-        // outer edge).
-        var topRowOffset = 2.3 * getVmin(); // min-height 2vmin + margin-bottom 0.3vmin
+        // outer edge). Row height is fixed at 2.4vmin + 0.3vmin margin-bottom.
+        var topRowOffset = 2.7 * getVmin();
         seat.style.top = (pos.y - topRowOffset - getGameAvatarSize() / 2) + 'px';
 
         // Top row: [dealer chip] [score] [status pill]
@@ -2049,6 +2049,29 @@ var UI = (function () {
   //  RESULTS
   // ================================================================
 
+  // If any player's card row is wider than the space the grid gives it
+  // (typically when someone has drawn many cards and/or names are long),
+  // shrink ALL mini-cards proportionally via a CSS custom property so
+  // every row still aligns to the same column edges.
+  function fitResultCards(handsDiv) {
+    if (!handsDiv) return;
+    handsDiv.style.setProperty('--card-scale', 1);
+    var rows = handsDiv.querySelectorAll('.result-hand-cards');
+    if (!rows.length) return;
+    var worstOverflow = 1;
+    rows.forEach(function (row) {
+      var avail = row.clientWidth;
+      var actual = row.scrollWidth;
+      if (avail > 0 && actual > avail) {
+        worstOverflow = Math.max(worstOverflow, actual / avail);
+      }
+    });
+    if (worstOverflow > 1) {
+      // Shrink a bit beyond what's needed so there's a hair of breathing room
+      handsDiv.style.setProperty('--card-scale', 1 / worstOverflow * 0.95);
+    }
+  }
+
   function showResults(winnerResult, results) {
     var winnerDiv = document.getElementById('results-winner');
     var handsDiv = document.getElementById('results-hands');
@@ -2090,12 +2113,20 @@ var UI = (function () {
       cardsHtml += '</div>';
 
       var totalClass = r.busted ? 'busted' : (winnerResult && r.player.id === winnerResult.winnerId ? 'winner' : '');
-      var totalHtml = '<div class="result-hand-total ' + totalClass + '">' +
-        (r.busted ? 'Bust ' : '') + r.total + '</div>';
+      // "Bust" label goes to the LEFT of the number, both on the same line.
+      var totalInner = r.busted
+        ? '<span class="bust-label">Bust</span><span class="total-value">' + r.total + '</span>'
+        : '<span class="total-value">' + r.total + '</span>';
+      var totalHtml = '<div class="result-hand-total ' + totalClass + '">' + totalInner + '</div>';
 
       handDiv.innerHTML = nameHtml + cardsHtml + totalHtml;
       handsDiv.appendChild(handDiv);
     }
+
+    // After the rows are in the DOM, if any card row overflows its column,
+    // scale all mini-cards down proportionally so they fit and the grid
+    // columns stay aligned.
+    requestAnimationFrame(function () { fitResultCards(handsDiv); });
 
     // Scoreboard
     var scores = Game.getScores();

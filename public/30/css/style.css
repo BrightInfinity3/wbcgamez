@@ -522,20 +522,6 @@ html, body {
   border-radius: 0.56vmin;
 }
 
-/* Debug centerline — vertical line through the horizontal center of the
-   viewport, top to bottom. Used to verify game-element alignment. Temporary;
-   remove when alignment work is complete. */
-.debug-centerline {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  transform: translateX(-50%);
-  background: rgba(255, 80, 80, 0.55);
-  z-index: 40;
-  pointer-events: none;
-}
 
 .game-table .table-felt {
   display: none;
@@ -785,7 +771,11 @@ html, body {
   width: 100%;
   margin-bottom: 0.3vmin;
   white-space: nowrap;
-  min-height: 2vmin;
+  /* Fixed height so avatars don't drift between rounds as the dealer chip
+     (2.4vmin tall) rotates to different seats or as the .leader glow
+     appears/disappears. The avatar's visual position depends on this row's
+     height; keeping it constant keeps the avatars pinned to the table edge. */
+  height: 2.4vmin;
 }
 .game-seat-top-row > .seat-dealer-chip { justify-self: end; margin-right: 0.2vmin; }
 .game-seat-top-row > .game-seat-total { grid-column: 2; justify-self: center; }
@@ -1317,25 +1307,31 @@ html, body {
   margin-bottom: 0.5em;
 }
 
-/* Results hands — ranked list */
+/* Results hands — ranked list.
+   Parent defines the column track (name | cards | total). Each row uses
+   `grid-template-columns: subgrid` so all rows share identical column
+   edges — names can vary in length, cards always start at the same x,
+   totals always end at the same x.
+   Mini-card sizes use the --card-scale custom property so JS can shrink
+   them proportionally when a long card row would overflow its column. */
 .results-hands {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  row-gap: 0.5em;
   margin-bottom: 1em;
+  --card-scale: 1;
 }
 
 .result-hand {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  column-gap: 0.6em;
+  padding: 0.5em 0.75em;
   background: var(--bg-panel);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 0.5em;
-  padding: 0.5em 0.75em;
-  /* Grid with fixed name + cards + total columns so every row has the
-     cards starting at exactly the same x regardless of name length. */
-  display: grid;
-  grid-template-columns: 5rem 1fr 3rem;
-  align-items: center;
-  gap: 0.6em;
   text-align: left;
 }
 
@@ -1352,20 +1348,19 @@ html, body {
   font-family: var(--font-display);
   font-size: 0.95rem;
   color: var(--text-light);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .result-hand-cards {
   display: flex;
   gap: 0.1em;
+  min-width: 0; /* allow the cell to shrink */
 }
 
-/* Result mini cards — 2x symbol size */
+/* Result mini cards — 2x symbol size, scalable via --card-scale */
 .result-mini-card {
-  width: 1.25rem;
-  height: 1.8rem;
+  width: calc(1.25rem * var(--card-scale, 1));
+  height: calc(1.8rem * var(--card-scale, 1));
   border-radius: 0.15rem;
   background: var(--card-white);
   border: 1px solid #ccc;
@@ -1373,9 +1368,10 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--card-scale, 1));
   font-weight: 700;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .result-mini-card.suit-red {
@@ -1391,6 +1387,12 @@ html, body {
   font-size: 1.2rem;
   font-weight: 700;
   text-align: right;
+  /* Bust label + number on ONE line, never wrapping */
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.3em;
+  white-space: nowrap;
 }
 
 .result-hand-total.busted {
@@ -1399,6 +1401,12 @@ html, body {
 
 .result-hand-total.winner {
   color: var(--gold-light);
+}
+
+.bust-label {
+  /* Same red, just a word to the left of the number */
+  font-family: var(--font-display);
+  font-size: 1em;
 }
 
 /* Scoreboard */
@@ -1595,24 +1603,32 @@ html, body {
   animation: pulseGlowSilver 2s ease-in-out infinite;
 }
 
-/* Gold halo on the current leader's score — doubled in intensity/spread
-   so it's clearly the most prominent glow on the table. */
+/* Gold halo on the current leader's score — rendered via an absolutely-
+   positioned ::before pseudo-element so the score's own box size stays
+   constant. Using padding on the score itself would expand the row and
+   shift the avatar's vertical position. */
 .game-seat-total.leader {
   color: #fff5d0;
   position: relative;
-  display: inline-block;
-  padding: 0.15vmin 0.5vmin;
+  text-shadow:
+    0 0 12px rgba(255, 225, 120, 1),
+    0 0 28px rgba(255, 210, 80, 0.9),
+    0 0 48px rgba(255, 200, 60, 0.65);
+}
+
+.game-seat-total.leader::before {
+  content: '';
+  position: absolute;
+  inset: -0.15vmin -0.5vmin;
   border-radius: 1.5vmin;
   box-shadow:
     0 0 30px rgba(255, 215, 85, 1),
     0 0 80px rgba(255, 205, 70, 0.95),
     0 0 160px rgba(255, 195, 50, 0.8),
     0 0 240px rgba(255, 185, 30, 0.5);
-  text-shadow:
-    0 0 12px rgba(255, 225, 120, 1),
-    0 0 28px rgba(255, 210, 80, 0.9),
-    0 0 48px rgba(255, 200, 60, 0.65);
   animation: leaderGlowPulse 2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
 }
 
 @keyframes leaderGlowPulse {
@@ -1688,18 +1704,14 @@ html, body {
   .winner-name { font-size: 1.2rem; }
   .winner-detail { font-size: 0.75rem; margin-top: 0.2em; }
   .all-busted-msg { font-size: 1.05rem; margin-bottom: 0.3em; }
-  .results-hands { gap: 0.25em; margin-bottom: 0.5em; }
-  .result-hand {
-    padding: 0.3em 0.5em;
-    gap: 0.4em;
-    border-radius: 0.4em;
-    grid-template-columns: 4rem 1fr 2.2rem;
-  }
+  .results-hands { row-gap: 0.25em; margin-bottom: 0.5em; }
+  .result-hand { padding: 0.3em 0.5em; column-gap: 0.4em; border-radius: 0.4em; }
   .result-hand-name { font-size: 0.7rem; }
   .result-hand-cards { gap: 0.08em; }
   .result-mini-card {
-    width: 0.85rem; height: 1.2rem;
-    font-size: 0.55rem;
+    width: calc(0.85rem * var(--card-scale, 1));
+    height: calc(1.2rem * var(--card-scale, 1));
+    font-size: calc(0.55rem * var(--card-scale, 1));
     border-radius: 0.12rem;
   }
   .result-hand-total { font-size: 0.9rem; }
@@ -1733,19 +1745,14 @@ html, body {
   .winner-name { font-size: 1.15rem; }
   .winner-detail { font-size: 0.7rem; margin-top: 0.15em; }
   .all-busted-msg { font-size: 1rem; margin-bottom: 0.25em; }
-  .results-hands { gap: 0.2em; margin-bottom: 0.4em; }
-  .result-hand {
-    padding: 0.2em 0.5em;
-    gap: 0.4em;
-    border-radius: 0.4em;
-    grid-template-columns: 4rem 1fr 2rem;
-  }
+  .results-hands { row-gap: 0.2em; margin-bottom: 0.4em; }
+  .result-hand { padding: 0.2em 0.5em; column-gap: 0.4em; border-radius: 0.4em; }
   .result-hand-name { font-size: 0.7rem; }
   .result-hand-cards { gap: 0.08em; }
   .result-mini-card {
-    width: 0.9rem;
-    height: 1.28rem;
-    font-size: 0.55rem;
+    width: calc(0.9rem * var(--card-scale, 1));
+    height: calc(1.28rem * var(--card-scale, 1));
+    font-size: calc(0.55rem * var(--card-scale, 1));
     border-radius: 0.1rem;
   }
   .result-hand-total { font-size: 0.85rem; }
