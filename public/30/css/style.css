@@ -1603,48 +1603,32 @@ html, body {
   animation: pulseGlowSilver 2s ease-in-out infinite;
 }
 
-/* Gold halo on the current leader's score — rendered via an absolutely-
-   positioned ::before pseudo-element so the score's own box size stays
-   constant. Using padding on the score itself would expand the row and
-   shift the avatar's vertical position. */
+/* Gold glow on the current leader's score — bright yellow text color +
+   light radial glow only. Kept deliberately loose: a small number of
+   low-alpha text-shadow layers so the glow fades smoothly into the dark
+   table instead of pooling into a visible "bubble" shape behind the digits. */
 .game-seat-total.leader {
-  color: #fff5d0;
-  position: relative;
+  color: #ffe066;
+  font-weight: 700;
   text-shadow:
-    0 0 12px rgba(255, 225, 120, 1),
-    0 0 28px rgba(255, 210, 80, 0.9),
-    0 0 48px rgba(255, 200, 60, 0.65);
-}
-
-.game-seat-total.leader::before {
-  content: '';
-  position: absolute;
-  inset: -0.15vmin -0.5vmin;
-  border-radius: 1.5vmin;
-  box-shadow:
-    0 0 30px rgba(255, 215, 85, 1),
-    0 0 80px rgba(255, 205, 70, 0.95),
-    0 0 160px rgba(255, 195, 50, 0.8),
-    0 0 240px rgba(255, 185, 30, 0.5);
+    0 0 6px rgba(255, 220, 110, 0.8),
+    0 0 14px rgba(255, 210, 80, 0.55),
+    0 0 28px rgba(255, 200, 60, 0.3);
   animation: leaderGlowPulse 2s ease-in-out infinite;
-  pointer-events: none;
-  z-index: -1;
 }
 
 @keyframes leaderGlowPulse {
   0%, 100% {
-    box-shadow:
-      0 0 30px rgba(255, 215, 85, 1),
-      0 0 80px rgba(255, 205, 70, 0.95),
-      0 0 160px rgba(255, 195, 50, 0.8),
-      0 0 240px rgba(255, 185, 30, 0.5);
+    text-shadow:
+      0 0 6px rgba(255, 220, 110, 0.8),
+      0 0 14px rgba(255, 210, 80, 0.55),
+      0 0 28px rgba(255, 200, 60, 0.3);
   }
   50% {
-    box-shadow:
-      0 0 44px rgba(255, 225, 105, 1),
-      0 0 110px rgba(255, 215, 90, 1),
-      0 0 190px rgba(255, 205, 70, 0.9),
-      0 0 280px rgba(255, 195, 50, 0.65);
+    text-shadow:
+      0 0 8px rgba(255, 230, 130, 0.95),
+      0 0 18px rgba(255, 215, 90, 0.7),
+      0 0 36px rgba(255, 205, 65, 0.4);
   }
 }
 

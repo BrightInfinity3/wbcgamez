@@ -151,9 +151,17 @@ var Renderer = (function () {
     var color = SUIT_COLORS[suit];
     var sym = SUIT_SYM[suit];
 
+    // Corner rank font: Georgia for numeric ranks and J/K (Cinzel's "1"
+    // reads as capital "I" and Cinzel's J has a long descender that hangs
+    // oddly in a tight corner). Cinzel for A and Q only.
+    var isNumeric = !isNaN(parseInt(rank));
+    var cornerFont = (isNumeric || rank === 'J' || rank === 'K')
+      ? 'bold 11px Georgia, serif'
+      : 'bold 11px Cinzel, Georgia, serif';
+
     // Top-left rank + suit with subtle shadow
     c.save();
-    c.font = 'bold 11px Cinzel, Georgia, serif';
+    c.font = cornerFont;
     c.textAlign = 'center';
     // Shadow
     c.fillStyle = 'rgba(0,0,0,0.1)';
@@ -172,7 +180,7 @@ var Renderer = (function () {
     c.save();
     c.translate(CARD_W - 10, CARD_H - 8);
     c.rotate(Math.PI);
-    c.font = 'bold 11px Cinzel, Georgia, serif';
+    c.font = cornerFont;
     c.textAlign = 'center';
     c.fillStyle = 'rgba(0,0,0,0.1)';
     c.fillText(rank, 0.5, 8.5);
@@ -232,13 +240,21 @@ var Renderer = (function () {
     c.restore();
   }
 
+  // Face-card renderer — 5-layer sandwich from Solitairra face-card-reference.md:
+  //   frame → chess-piece watermark → letter shadow → gold-foil overlay →
+  //   solid suit-colour letter → suit pip below → four corner flourishes.
+  //
+  // Font choices (critical): A/Q use Cinzel 900 for decorative Roman serifs,
+  // J/K use Georgia 900. Cinzel's J has a long descender that hangs into the
+  // suit pip below — Georgia's J sits cleanly on the baseline, so we never
+  // use Cinzel for J or K.
   function renderFaceCard(c, area, rank, suit) {
-    var sym = SUIT_SYM[suit];
+    var sym   = SUIT_SYM[suit];
     var color = SUIT_COLORS[suit];
-    var cx = area.x + area.w / 2;
-    var cy = area.y + area.h / 2;
+    var cx    = area.x + area.w / 2;
+    var cy    = area.y + area.h / 2;
 
-    // Decorative inner frame with gold border
+    // 1. Inner decorative frame (very faint gold rounded-rect stroke)
     c.save();
     var frameInset = 2;
     var frameR = 3;
@@ -250,78 +266,89 @@ var Renderer = (function () {
     c.stroke();
     c.restore();
 
-    // Background chess symbol (large, behind rank)
+    // 2. Shared vertical alignment — Q gets +2 to compensate for its
+    //    descender tail pulling the visual centre up.
+    var rankCenterY = cy - 4;
+    var qDescenderOffset = (rank === 'Q') ? 2 : 0;
+    var rankY = rankCenterY + qDescenderOffset;
+
+    // 3. Chess-piece watermark (very faint, behind the letter)
     c.save();
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    var chessSym = rank === 'K' ? '\u265A' : rank === 'Q' ? '\u265B' : '\u2658';
+    var chessSym = rank === 'K' ? '\u265A'   // black king
+                 : rank === 'Q' ? '\u265B'   // black queen
+                 : rank === 'J' ? '\u2658'   // white knight (outline reads cleaner at small sizes)
+                 :                '\u2726';  // four-pointed star for A
     c.font = 'bold 30px serif';
     c.fillStyle = color;
     c.globalAlpha = 0.08;
-    c.fillText(chessSym, cx, cy - 2);
+    c.fillText(chessSym, cx, rankY);
     c.globalAlpha = 1;
     c.restore();
 
-    // Large rank letter with drop shadow
+    // 4. Three-pass gilded rank letter: shadow → gold-foil → solid suit colour.
+    //    Font: Cinzel for A/Q (decorative), Georgia for J/K (clean, no long
+    //    descender on J).
+    var faceFont = (rank === 'A' || rank === 'Q')
+      ? '900 28px Cinzel, Georgia, serif'
+      : '900 28px Georgia, serif';
     c.save();
-    c.font = '900 28px Cinzel, Georgia, serif';
+    c.font = faceFont;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    // Shadow
+    // Pass 1 — drop shadow
     c.fillStyle = 'rgba(0,0,0,0.15)';
-    c.fillText(rank, cx + 1, cy - 1);
-    // Gold-tinted fill for face cards
-    var goldGrad = Textures.goldFoilGradient(c, cx - 14, cy - 14, 28, 28);
+    c.fillText(rank, cx + 1, rankY + 1);
+    // Pass 2 — gold-foil sheen
+    var goldGrad = Textures.goldFoilGradient(c, cx - 14, rankY - 14, 28, 28);
     c.fillStyle = goldGrad;
     c.globalAlpha = 0.3;
-    c.fillText(rank, cx, cy - 2);
+    c.fillText(rank, cx, rankY);
     c.globalAlpha = 1;
-    // Main color on top
+    // Pass 3 — solid suit colour
     c.fillStyle = color;
-    c.fillText(rank, cx, cy - 2);
+    c.fillText(rank, cx, rankY);
     c.restore();
 
-    // Large suit below with shadow
+    // 5. Suit pip below the letter — positioned 24px below rankCenterY so
+    //    it lands at the same visual distance regardless of Q's offset.
+    var suitPipY = rankCenterY + 24;
     c.save();
-    c.font = '18px serif';
+    c.font = '20px serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     c.fillStyle = 'rgba(0,0,0,0.1)';
-    c.fillText(sym, cx + 0.5, cy + 14.5);
+    c.fillText(sym, cx + 0.5, suitPipY + 0.5);
     c.fillStyle = color;
-    c.fillText(sym, cx, cy + 14);
+    c.fillText(sym, cx, suitPipY);
     c.restore();
 
-    // Decorative corner accents (gold tinted)
+    // 6. Four corner flourishes (quarter-circle gold curls inside the frame)
     c.save();
     c.strokeStyle = '#c9952a';
     c.globalAlpha = 0.18;
     c.lineWidth = 0.8;
-
-    // Top-left
+    // top-left
     c.beginPath();
     c.moveTo(area.x + 2, area.y + 12);
     c.quadraticCurveTo(area.x + 2, area.y + 2, area.x + 12, area.y + 2);
     c.stroke();
-
-    // Top-right
+    // top-right
     c.beginPath();
     c.moveTo(area.x + area.w - 2, area.y + 12);
     c.quadraticCurveTo(area.x + area.w - 2, area.y + 2, area.x + area.w - 12, area.y + 2);
     c.stroke();
-
-    // Bottom-left
+    // bottom-left
     c.beginPath();
     c.moveTo(area.x + 2, area.y + area.h - 12);
     c.quadraticCurveTo(area.x + 2, area.y + area.h - 2, area.x + 12, area.y + area.h - 2);
     c.stroke();
-
-    // Bottom-right
+    // bottom-right
     c.beginPath();
     c.moveTo(area.x + area.w - 2, area.y + area.h - 12);
     c.quadraticCurveTo(area.x + area.w - 2, area.y + area.h - 2, area.x + area.w - 12, area.y + area.h - 2);
     c.stroke();
-
     c.restore();
   }
 

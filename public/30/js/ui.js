@@ -1922,6 +1922,13 @@ var UI = (function () {
     var gs = Game.getState();
     if (!gs || !gs.players) return;
     var overlayPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
+    // MUST match the top calc in renderGameTable: the seat contains a
+    // .game-seat-top-row (height 2.4vmin + 0.3vmin margin = 2.7vmin) ABOVE
+    // the avatar, so the seat's style.top is offset by that much so the
+    // avatar center lands at pos.y (tangent to table's outer wood edge).
+    // Omitting this offset pushes every avatar 2.7vmin off the tangent
+    // orbit on resize.
+    var topRowOffset = 2.7 * getVmin();
 
     for (var i = 0; i < gs.players.length; i++) {
       var p = gs.players[i];
@@ -1929,7 +1936,7 @@ var UI = (function () {
       var seat = document.querySelector('.game-seat[data-player="' + p.id + '"]');
       if (seat) {
         seat.style.left = pos.x + 'px';
-        seat.style.top = (pos.y - getGameAvatarSize() / 2) + 'px';
+        seat.style.top = (pos.y - topRowOffset - getGameAvatarSize() / 2) + 'px';
       }
     }
 
