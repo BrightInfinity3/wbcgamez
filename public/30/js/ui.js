@@ -448,6 +448,17 @@ var UI = (function () {
         Online.onRenderLobby(function () {
           renderOnlineLobbySeats();
         });
+        // When a guest's device drops/pauses mid-game, and we're currently
+        // stuck waiting on *their* action, re-enter the turn loop so the
+        // host can take over as AI for them.
+        Online.onHostAutoPlay(function () {
+          if (gamePhase === 'playing' && !gameFlowLocked) {
+            var cur = Game.getCurrentPlayer();
+            if (cur && Online.shouldHostAutoPlay(cur.id)) {
+              nextTurn();
+            }
+          }
+        });
         enterOnlineLobby();
         Online.renderOnlineLobby();
         document.getElementById('btn-create-room').disabled = false;
@@ -622,7 +633,8 @@ var UI = (function () {
     // the local setup layout so the avatar center lands exactly at pos.y
     // (tangent to the table's outer wood edge). Empty seats get an invisible
     // placeholder row so their total height matches filled seats.
-    var lobbyTopRowOffset = 3 * getVmin();
+    // 3vmin row + 0.3vmin margin-bottom = 3.3vmin total vertical space.
+    var lobbyTopRowOffset = 3.3 * getVmin();
 
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
       var seat = lobbyState.seats[i];
@@ -1020,7 +1032,10 @@ var UI = (function () {
       el.style.left = pos.x + 'px';
       // Seat's visible top is the top-row (badges sit above the avatar).
       // The row is rendered in-flow so account for its reserved height.
-      var setupTopRowOffset = 3 * getVmin(); // matches .seat-top-row min-height
+      // .seat-top-row is 3vmin fixed + 0.3vmin margin-bottom. Using 3.3
+      // instead of just 3 puts the avatar center EXACTLY on the tangent
+      // orbit; 3 alone leaves a 0.3vmin visible gap on bottom seats.
+      var setupTopRowOffset = 3.3 * getVmin();
       el.style.top = (pos.y - setupTopRowOffset - getSetupAvatarSize() / 2) + 'px';
       el.dataset.seat = i;
 
@@ -1600,9 +1615,34 @@ var UI = (function () {
     if (player.isHuman) {
       // Online mode: only show buttons if this player belongs to this device
       if (Online.isActive() && !Online.isMyPlayer(player.id)) {
-        setMessage(player.name + '\'s turn!');
-        showActionBar(false);
-        // Remote player — wait for their action via network
+        // Remote human. If we're the host AND that player's device is
+        // currently paused (screen off, network dropped, etc.), WE play
+        // an AI move so the game doesn't stall. When they wake back up,
+        // the device sees isDevicePaused flip off and normal control
+        // resumes on their next turn.
+        if (Online.isHost() && Online.shouldHostAutoPlay(player.id)) {
+          setMessage(player.name + ' (paused — AI playing)');
+          showActionBar(false);
+          gameFlowLocked = true;
+          Animations.delay(Animations.TIMING.AI_THINK).then(function () {
+            // Re-check in case they resumed during the think delay
+            if (!Online.shouldHostAutoPlay(player.id)) {
+              gameFlowLocked = false;
+              nextTurn();
+              return;
+            }
+            var decision = Game.aiDecision(player.id);
+            return executeAction(player.id, decision);
+          }).catch(function (err) {
+            console.error('[UI] Host-AI turn error:', err);
+            gameFlowLocked = false;
+            advanceToNext();
+          });
+        } else {
+          setMessage(player.name + '\'s turn!');
+          showActionBar(false);
+          // Remote player — wait for their action via network
+        }
       } else {
         setMessage(player.name + '\'s turn!');
         showActionBar(true, false);

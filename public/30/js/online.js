@@ -172,17 +172,44 @@ var Online = (function () {
       Network.onMessage(handleHostMessage);
       Network.onDisconnect(handleGuestDisconnect);
 
-      // Reconnection handler — guest came back during grace period
+      // Paused — conn.close fired, entering grace period. Immediately
+      // mark the device as paused so during-game turn handling can
+      // switch to host-AI for their players without waiting for the
+      // full 5-minute grace to expire.
+      Network.onPaused(function (peerId) {
+        console.log('[Online] Guest paused:', peerId);
+        if (lobbyState.devices[peerId]) {
+          lobbyState.devices[peerId].paused = true;
+          broadcastLobbyState();
+          renderOnlineLobby();
+          // If we're mid-game and it's currently their turn, have the host
+          // AI take over the pending action now (so the game doesn't stall).
+          if (gamePhase === 'playing' && typeof onHostAutoPlayCallback === 'function') {
+            onHostAutoPlayCallback();
+          }
+        }
+      });
+
+      // Resumed — conn reopened within grace
+      Network.onResumed(function (peerId) {
+        console.log('[Online] Guest resumed:', peerId);
+        if (lobbyState.devices[peerId]) {
+          lobbyState.devices[peerId].paused = false;
+          broadcastLobbyState();
+          renderOnlineLobby();
+        }
+      });
+
+      // Reconnection handler — guest came back during grace period.
+      // Re-sync full state so they can catch up.
       Network.onReconnect(function (peerId) {
         console.log('[Online] Guest reconnected:', peerId);
-        // They're still in our lobby/game state — just re-sync them
         if (gamePhase === 'lobby') {
-          Network.send(peerId, { type: 'lobby_state', data: lobbyState });
+          Network.send(peerId, { type: 'lobby_state', data: JSON.parse(JSON.stringify(lobbyState)) });
         } else if (gamePhase === 'playing') {
-          // Re-sync full game state
           Network.send(peerId, {
             type: 'game_state_sync',
-            data: { gameState: Game.serialize() }
+            data: { gameState: Game.serialize(), lobbyState: JSON.parse(JSON.stringify(lobbyState)) }
           });
         }
       });
@@ -386,18 +413,28 @@ var Online = (function () {
 
   function handleGuestDisconnect(peerId) {
     if (gamePhase === 'lobby') {
-      // Just remove their players
+      // Lobby: pulling out before the game starts — remove their seats.
+      // 5-minute grace has already expired so we know they aren't coming
+      // back quickly; open those seats up for someone else.
       removeDevicePlayers(peerId);
-      // Remove pending request if any
       pendingRequests = pendingRequests.filter(function (r) { return r.peerId !== peerId; });
       broadcastLobbyState();
       renderOnlineLobby();
       renderJoinRequests();
     } else {
-      // During game or results — disband
-      var device = lobbyState.devices[peerId];
-      var username = device ? device.username : 'A player';
-      disbandRoom(username + ' has left the game. Please create a new room to continue playing.');
+      // During game or results: KEEP THE SEATS. Mark the device paused
+      // (permanent now — 5 minutes without reconnect). Host AI plays for
+      // their remaining turns, and if the player wakes their device up
+      // later they can still rejoin via handleGuestRejoin. Only the
+      // host leaving collapses the room.
+      if (lobbyState.devices[peerId]) {
+        lobbyState.devices[peerId].paused = true;
+        console.log('[Online] Guest', peerId, 'dropped during game — host AI takes over, seat preserved');
+        broadcastLobbyState();
+        if (typeof onHostAutoPlayCallback === 'function') {
+          onHostAutoPlayCallback();
+        }
+      }
     }
   }
 
@@ -866,6 +903,35 @@ var Online = (function () {
     return lobbyState.seats[seatIdx] && lobbyState.seats[seatIdx].deviceId === myDeviceId;
   }
 
+  // Is a remote device currently paused (screen-off, dropped, etc.)?
+  // During game, the host plays AI for these players' turns.
+  function isDevicePaused(deviceId) {
+    if (!deviceId) return false;
+    var dev = lobbyState.devices[deviceId];
+    return !!(dev && dev.paused);
+  }
+
+  // Returns true if the given player is a human on a device that is
+  // currently paused, i.e. the host should auto-play an AI move for them.
+  function shouldHostAutoPlay(playerId) {
+    if (!_isHost) return false;
+    var players = Game.getState().players;
+    for (var i = 0; i < players.length; i++) {
+      var p = players[i];
+      if (p.id !== playerId) continue;
+      // AI players already play via normal AI path — don't override
+      if (p.isAI) return false;
+      // Host's own local players always play normally
+      if (p.deviceId === myDeviceId) return false;
+      // Remote human whose device is paused → host AI takes over
+      return isDevicePaused(p.deviceId);
+    }
+    return false;
+  }
+
+  var onHostAutoPlayCallback = null;
+  function onHostAutoPlay(cb) { onHostAutoPlayCallback = cb; }
+
   return {
     hostGame: hostGame,
     joinGame: joinGame,
@@ -896,6 +962,9 @@ var Online = (function () {
     isHost: isHost,
     isMyPlayer: isMyPlayer,
     isMySeat: isMySeat,
+    isDevicePaused: isDevicePaused,
+    shouldHostAutoPlay: shouldHostAutoPlay,
+    onHostAutoPlay: onHostAutoPlay,
     getMyDeviceId: getMyDeviceId,
     getMyUsername: getMyUsername,
     getLobbyState: getLobbyState,

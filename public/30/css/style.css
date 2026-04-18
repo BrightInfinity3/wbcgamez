@@ -551,7 +551,11 @@ html, body {
 
 /* Top row: [dealer / dealer-slot] [AI/Human badge] [remove X].
    Uses minmax(0, 1fr) on the side tracks so wide dealer/X chips can't
-   grow their track and push the badge off-center. */
+   grow their track and push the badge off-center.
+   FIXED height (not min-height) so the avatar's vertical position is
+   deterministic — otherwise a slightly taller badge on some seats
+   shifts those avatars off the tangent orbit. Paired with the
+   topRowOffset = 3.3vmin in JS (3vmin row + 0.3vmin margin). */
 .seat-top-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -559,7 +563,7 @@ html, body {
   width: 100%;
   margin-bottom: 0.3vmin;
   white-space: nowrap;
-  min-height: 3vmin;
+  height: 3vmin;
 }
 .seat-top-row > .seat-dealer-chip,
 .seat-top-row > .seat-dealer-slot { justify-self: end; margin-right: 0.25vmin; }
@@ -610,10 +614,12 @@ html, body {
   color: var(--text-light);
   margin-top: 0.21vmin;
   text-align: center;
-  max-width: 14vmin; /* allow slight overflow of avatar width for longer names */
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* No max-width / no ellipsis: show the full name (up to 12 chars) even
+     if it's wider than the 7.8vmin seat box. The seat's own width stays
+     avatar-sized (via translateX(-50%) it centers on the avatar), the name
+     just overflows symmetrically on both sides. */
   white-space: nowrap;
+  overflow: visible;
   cursor: pointer;
 }
 
@@ -1603,32 +1609,47 @@ html, body {
   animation: pulseGlowSilver 2s ease-in-out infinite;
 }
 
-/* Gold glow on the current leader's score — bright yellow text color +
-   light radial glow only. Kept deliberately loose: a small number of
-   low-alpha text-shadow layers so the glow fades smoothly into the dark
-   table instead of pooling into a visible "bubble" shape behind the digits. */
+/* Gold glow on the current leader's score — BIG, BOLD, SOFT.
+   Design goal: ~3x the spread of the previous version (max 28px → ~90px)
+   so the halo extends well past the digits, AND stacked layers with
+   rising alpha on the outer layers so the glow feels dense without
+   pooling into a visible rectangular bubble shape behind the text.
+   Outer layers dominate the silhouette → the halo reads as a ROUND
+   fuzzy aura rather than a rectangle. */
 .game-seat-total.leader {
-  color: #ffe066;
-  font-weight: 700;
+  color: #fff5d0;
+  font-weight: 900;
   text-shadow:
-    0 0 6px rgba(255, 220, 110, 0.8),
-    0 0 14px rgba(255, 210, 80, 0.55),
-    0 0 28px rgba(255, 200, 60, 0.3);
+    0 0 6px  rgba(255, 240, 170, 1),
+    0 0 14px rgba(255, 230, 130, 1),
+    0 0 28px rgba(255, 220, 100, 0.95),
+    0 0 48px rgba(255, 215, 85,  0.8),
+    0 0 72px rgba(255, 210, 75,  0.6),
+    0 0 100px rgba(255, 205, 65, 0.42),
+    0 0 140px rgba(255, 200, 55, 0.25);
   animation: leaderGlowPulse 2s ease-in-out infinite;
 }
 
 @keyframes leaderGlowPulse {
   0%, 100% {
     text-shadow:
-      0 0 6px rgba(255, 220, 110, 0.8),
-      0 0 14px rgba(255, 210, 80, 0.55),
-      0 0 28px rgba(255, 200, 60, 0.3);
+      0 0 6px  rgba(255, 240, 170, 1),
+      0 0 14px rgba(255, 230, 130, 1),
+      0 0 28px rgba(255, 220, 100, 0.95),
+      0 0 48px rgba(255, 215, 85,  0.8),
+      0 0 72px rgba(255, 210, 75,  0.6),
+      0 0 100px rgba(255, 205, 65, 0.42),
+      0 0 140px rgba(255, 200, 55, 0.25);
   }
   50% {
     text-shadow:
-      0 0 8px rgba(255, 230, 130, 0.95),
-      0 0 18px rgba(255, 215, 90, 0.7),
-      0 0 36px rgba(255, 205, 65, 0.4);
+      0 0 8px  rgba(255, 245, 190, 1),
+      0 0 18px rgba(255, 235, 140, 1),
+      0 0 36px rgba(255, 225, 110, 1),
+      0 0 60px rgba(255, 220, 95,  0.9),
+      0 0 90px rgba(255, 215, 85,  0.72),
+      0 0 125px rgba(255, 210, 70, 0.5),
+      0 0 170px rgba(255, 205, 60, 0.32);
   }
 }
 

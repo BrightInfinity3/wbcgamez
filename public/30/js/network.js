@@ -16,16 +16,20 @@ var Network = (function () {
 
   var messageHandler = null;
   var connectHandler = null;
-  var disconnectHandler = null;
-  var reconnectHandler = null; // called when a guest reconnects
+  var disconnectHandler = null;   // FINAL drop (after grace period)
+  var reconnectHandler = null;    // guest reconnects during grace
+  var pausedHandler = null;       // conn closed, entering grace period
+  var resumedHandler = null;      // conn reopened within grace
 
   var ROOM_PREFIX = 'thirty-game-';
-  var HEARTBEAT_INTERVAL = 5000; // 5 seconds
-  var HEARTBEAT_TIMEOUT = 15000; // 15 seconds without heartbeat = dead
-  var RECONNECT_GRACE = 30000;   // 30 seconds to reconnect before disband
+  var HEARTBEAT_INTERVAL = 5000;   // 5 seconds
+  var HEARTBEAT_TIMEOUT = 60000;   // 60s without heartbeat = probably dead
+  var RECONNECT_GRACE = 300000;    // 5 MINUTES to reconnect before final drop.
+                                   // Covers iPad/phone screen-off periods
+                                   // (iOS suspends JS when the screen locks).
 
   var heartbeatTimer = null;
-  var peerHeartbeats = {};  // peerId -> { timer, lastSeen, graceTimer }
+  var peerHeartbeats = {};  // peerId -> { timer, lastSeen, graceTimer, paused }
 
   // ICE server config — STUN + TURN. STUN handles the common case (NAT
   // hole-punching), TURN is the fallback when the network blocks direct
@@ -33,38 +37,47 @@ var Network = (function () {
   // NATs, mobile hotspots, and guest Wi-Fi networks commonly need TURN or
   // the peers will never actually reach each other.
   //
-  // Open Relay Project (https://www.metered.ca/tools/openrelay/) provides
-  // free public TURN relays with no signup — shared demo credentials.
-  // We pass UDP, TCP and TLS variants so at least one port escapes most
-  // corporate/guest firewalls.
-  var ICE_CONFIG = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun.relay.metered.ca:80' },
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
-    ],
-    iceCandidatePoolSize: 4
-  };
+  // We pass multiple public TURN providers (Open Relay, expressturn) on
+  // UDP, TCP and TLS so at least one combination escapes most
+  // corporate/guest firewalls. Each guest's PeerJS picks whichever pairs
+  // successfully with the host during ICE gathering.
+  var TURN_SERVERS = [
+    // Open Relay Project (metered.ca) — free public demo, shared creds.
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    // ExpressTURN.com — free community TURN, public demo creds.
+    { urls: 'turn:relay1.expressturn.com:3478', username: 'ef9WOA39BIBJY9HREJ', credential: 'zkR3gWmKWQYCASWZ' },
+    { urls: 'turn:relay1.expressturn.com:3480?transport=tcp', username: 'ef9WOA39BIBJY9HREJ', credential: 'zkR3gWmKWQYCASWZ' }
+  ];
+
+  var STUN_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' }
+  ];
+
+  // Build a full ICE config. If `relayOnly` is true we strip the STUN
+  // servers and force iceTransportPolicy: 'relay' so WebRTC ONLY attempts
+  // TURN paths. That's slower but reliable when the network blocks
+  // every form of direct connectivity.
+  function buildIceConfig(relayOnly) {
+    if (relayOnly) {
+      return {
+        iceServers: TURN_SERVERS.slice(),
+        iceTransportPolicy: 'relay',
+        iceCandidatePoolSize: 4
+      };
+    }
+    return {
+      iceServers: STUN_SERVERS.concat(TURN_SERVERS),
+      iceCandidatePoolSize: 4
+    };
+  }
+
+  // Legacy default config (kept for the host path which doesn't retry).
+  var ICE_CONFIG = buildIceConfig(false);
 
   // Generate a short, readable room code (no ambiguous chars)
   function generateRoomCode() {
@@ -120,25 +133,36 @@ var Network = (function () {
 
   function recordHeartbeat(peerId) {
     if (!peerHeartbeats[peerId]) {
-      peerHeartbeats[peerId] = { lastSeen: Date.now(), graceTimer: null };
+      peerHeartbeats[peerId] = { lastSeen: Date.now(), graceTimer: null, paused: false };
     }
     peerHeartbeats[peerId].lastSeen = Date.now();
 
-    // If they were in grace period, they're back!
+    // If they were in grace period OR marked paused, they're back!
+    var wasPaused = peerHeartbeats[peerId].paused || peerHeartbeats[peerId].graceTimer;
     if (peerHeartbeats[peerId].graceTimer) {
       console.log('[Network] Peer', peerId, 'recovered during grace period');
       clearTimeout(peerHeartbeats[peerId].graceTimer);
       peerHeartbeats[peerId].graceTimer = null;
-      if (reconnectHandler) reconnectHandler(peerId);
     }
+    if (peerHeartbeats[peerId].paused) {
+      peerHeartbeats[peerId].paused = false;
+      if (resumedHandler) resumedHandler(peerId);
+    }
+    if (wasPaused && reconnectHandler) reconnectHandler(peerId);
   }
 
   function startGracePeriod(peerId) {
     if (!peerHeartbeats[peerId]) return;
+    // Mark as paused immediately so app-layer can start AI fallback etc.
+    if (!peerHeartbeats[peerId].paused) {
+      peerHeartbeats[peerId].paused = true;
+      console.log('[Network] Peer paused (grace started):', peerId);
+      if (pausedHandler) pausedHandler(peerId);
+    }
     peerHeartbeats[peerId].graceTimer = setTimeout(function () {
       console.warn('[Network] Grace period expired for', peerId);
       peerHeartbeats[peerId].graceTimer = null;
-      // Now actually trigger disconnect
+      // Final drop
       delete connections[peerId];
       delete peerHeartbeats[peerId];
       if (disconnectHandler) disconnectHandler(peerId);
@@ -250,7 +274,19 @@ var Network = (function () {
   var guestRoomCode = '';
   var guestReconnecting = false;
 
+  // Two-pass join: first normal ICE (direct + STUN + TURN), then — if
+  // that fails — a relay-only retry. Many hotel / office / guest Wi-Fi
+  // networks only let TURN traffic through, and the direct/STUN
+  // candidates keep "winning" the ICE priority race before timing out.
+  // Forcing relay on retry cuts past that.
   function joinRoom(code) {
+    return attemptJoin(code, false).catch(function (err) {
+      console.warn('[Network] Normal join failed, retrying relay-only:', err && err.message);
+      return attemptJoin(code, true);
+    });
+  }
+
+  function attemptJoin(code, relayOnly) {
     return new Promise(function (resolve, reject) {
       roomCode = code.toUpperCase();
       guestRoomCode = roomCode;
@@ -263,17 +299,18 @@ var Network = (function () {
         hostConn = null;
       }
 
-      peer = new Peer(undefined, { debug: 2, config: ICE_CONFIG });
+      var iceConfig = buildIceConfig(relayOnly);
+      console.log('[Network] Join attempt, relayOnly=' + relayOnly, 'ICE servers:', iceConfig.iceServers.length);
+      peer = new Peer(undefined, { debug: 2, config: iceConfig });
       _isHost = false;
 
       var resolved = false;
       var connectAttempted = false;
-      var iceState = 'new';
 
       function fail(msg) {
         if (!resolved) {
           resolved = true;
-          console.error('[Network] Join failed:', msg);
+          console.error('[Network] Join failed (relayOnly=' + relayOnly + '):', msg);
           disconnect();
           reject(new Error(msg));
         }
@@ -299,7 +336,10 @@ var Network = (function () {
         // 10–15s on congested networks). 20s total before giving up.
         setTimeout(function () {
           if (!resolved) {
-            fail('Could not reach room ' + roomCode + '. Check the room code, make sure the host is still in the lobby, and try again. If both devices are on the same Wi-Fi, try turning one device\'s Wi-Fi off and back on.');
+            var hint = relayOnly
+              ? ' This can happen when the Wi-Fi network blocks WebRTC relay traffic. Try switching one device to its mobile data / cellular hotspot.'
+              : '';
+            fail('Could not reach room ' + roomCode + '.' + hint);
           }
         }, 20000);
       });
@@ -331,6 +371,31 @@ var Network = (function () {
 
   function connectToHost(hostPeerId, onSuccess, onFail) {
     hostConn = peer.connect(hostPeerId, { reliable: true, serialization: 'json' });
+
+    // Wire up ICE state logging for diagnosis. PeerJS exposes the
+    // underlying RTCPeerConnection as `peerConnection`. If we can reach
+    // it, log every ICE state change and candidate — so if a join fails
+    // the console tells us WHICH stage failed (signaling vs gathering vs
+    // connectivity checks).
+    setTimeout(function () {
+      try {
+        var pc = hostConn && hostConn.peerConnection;
+        if (!pc) return;
+        pc.oniceconnectionstatechange = function () {
+          console.log('[Network] ICE state:', pc.iceConnectionState);
+        };
+        pc.onicegatheringstatechange = function () {
+          console.log('[Network] ICE gathering:', pc.iceGatheringState);
+        };
+        pc.onicecandidate = function (e) {
+          if (e.candidate) {
+            console.log('[Network] ICE candidate:', e.candidate.type || '?', e.candidate.protocol, e.candidate.address || '(redacted)');
+          } else {
+            console.log('[Network] ICE candidate gathering complete');
+          }
+        };
+      } catch (e) { /* ignore — diagnostics only */ }
+    }, 100);
 
     hostConn.on('open', function () {
       console.log('[Network] Connection to host OPENED successfully!');
@@ -552,6 +617,8 @@ var Network = (function () {
   function onConnect(handler) { connectHandler = handler; }
   function onDisconnect(handler) { disconnectHandler = handler; }
   function onReconnect(handler) { reconnectHandler = handler; }
+  function onPaused(handler) { pausedHandler = handler; }
+  function onResumed(handler) { resumedHandler = handler; }
 
   // ---- Accessors ----
   function isHost() { return _isHost; }
@@ -572,6 +639,8 @@ var Network = (function () {
     onConnect: onConnect,
     onDisconnect: onDisconnect,
     onReconnect: onReconnect,
+    onPaused: onPaused,
+    onResumed: onResumed,
     isHost: isHost,
     isConnected: isConnected,
     isReconnecting: isReconnecting,
