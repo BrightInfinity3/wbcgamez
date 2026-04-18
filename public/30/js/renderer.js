@@ -1199,12 +1199,13 @@ var Renderer = (function () {
   }
 
   // Table felt radius — same for both portrait and landscape to look proportionally identical.
-  // 30vmin felt + 2.5vmin wood = 32.5vmin outer table radius.
-  // Game avatars tangent to outer: orbit = 32.5 + 3.35 = 35.85vmin.
-  // Avatar far edge = 35.85 + 3.35 = 39.2vmin. Plus ~4vmin for name = 43.2vmin.
-  // This fits in any viewport where min(W,H) >= 86.4vmin — always true by definition of vmin.
+  // Sized to fill mobile-portrait horizontal space:
+  //   34vmin felt + 2.5vmin wood = 36.5vmin outer radius.
+  //   Avatar tangent: orbit = 36.5 + 3.9 = 40.4vmin.
+  //   Avatar far edge from center = 44.3vmin — leaves ~6vmin margin on a phone
+  //   portrait (W/2 = 50vmin).
   function getTableRadii() {
-    var r = 30 * getVmin();
+    var r = 34 * getVmin();
     return { rx: r, ry: r };
   }
 

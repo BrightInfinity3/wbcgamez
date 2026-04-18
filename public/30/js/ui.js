@@ -609,7 +609,10 @@ var UI = (function () {
       el.dataset.seat = i;
 
       if (seat.occupied) {
-        // Badge above avatar — show AI or username
+        // Top row: [badge] [remove X (host only, AI only)]
+        var topRow = document.createElement('div');
+        topRow.className = 'seat-top-row';
+
         var badge = document.createElement('div');
         badge.className = 'seat-type-badge';
         if (seat.isAI) {
@@ -623,7 +626,23 @@ var UI = (function () {
           badge.classList.add('human');
           badge.textContent = dev ? dev.username : '?';
         }
-        el.appendChild(badge);
+        topRow.appendChild(badge);
+
+        if (isHost && seat.isAI) {
+          var removeCircle = document.createElement('div');
+          removeCircle.className = 'seat-remove-circle';
+          removeCircle.textContent = '\u00d7';
+          removeCircle.title = 'Remove AI';
+          removeCircle.addEventListener('click', (function (idx) {
+            return function (e) {
+              e.stopPropagation();
+              Online.removeFromSeat(idx);
+            };
+          })(i));
+          topRow.appendChild(removeCircle);
+        }
+
+        el.appendChild(topRow);
 
         // Avatar
         var avatar = document.createElement('div');
@@ -656,22 +675,6 @@ var UI = (function () {
           })(i));
         }
         el.appendChild(nameEl);
-
-        // Remove button (host can remove AI)
-        if (isHost && seat.isAI) {
-          var removeCircle = document.createElement('div');
-          removeCircle.className = 'seat-remove-circle';
-          removeCircle.textContent = '\u00d7';
-          removeCircle.title = 'Remove AI';
-          positionRemoveCircle(removeCircle, getSetupAvatarSize());
-          removeCircle.addEventListener('click', (function (idx) {
-            return function (e) {
-              e.stopPropagation();
-              Online.removeFromSeat(idx);
-            };
-          })(i));
-          el.appendChild(removeCircle);
-        }
       } else {
         // Empty seat — host can click to add AI
         var emptyAvatar = document.createElement('div');
@@ -986,11 +989,34 @@ var UI = (function () {
       var el = document.createElement('div');
       el.className = 'seat' + (seat.occupied ? '' : ' seat-empty');
       el.style.left = pos.x + 'px';
-      el.style.top = (pos.y - getSetupAvatarSize() / 2) + 'px';
+      // Seat's visible top is the top-row (badges sit above the avatar).
+      // The row is rendered in-flow so account for its reserved height.
+      var setupTopRowOffset = 3 * getVmin(); // matches .seat-top-row min-height
+      el.style.top = (pos.y - setupTopRowOffset - getSetupAvatarSize() / 2) + 'px';
       el.dataset.seat = i;
 
-      // Human/AI badge — above avatar (shown on both occupied and empty seats)
+      // Top row: [dealer / dealer-slot] [AI/Human badge] [remove X]
+      // Occupied seats get all three. Empty seats get only the badge.
+      var topRow = document.createElement('div');
+      topRow.className = 'seat-top-row';
+
       if (seat.occupied) {
+        // Dealer chip (solid if dealer, hollow/dashed if not — click to set)
+        var dealerBadge = document.createElement('div');
+        dealerBadge.className = seat.isDealer ? 'seat-dealer-chip' : 'seat-dealer-slot';
+        dealerBadge.textContent = 'D';
+        if (!seat.isDealer) {
+          dealerBadge.title = 'Make dealer';
+          dealerBadge.addEventListener('click', (function (idx) {
+            return function (e) {
+              e.stopPropagation();
+              setDealer(idx);
+            };
+          })(i));
+        }
+        topRow.appendChild(dealerBadge);
+
+        // AI/Human badge (toggle)
         var badge = document.createElement('div');
         badge.className = 'seat-type-badge ' + (seat.isHuman ? 'human' : 'ai');
         badge.textContent = seat.isHuman ? 'Human' : 'AI';
@@ -1001,8 +1027,22 @@ var UI = (function () {
             toggleHumanAI(idx);
           };
         })(i));
-        el.appendChild(badge);
+        topRow.appendChild(badge);
+
+        // Remove X (dashed red circle)
+        var removeCircle = document.createElement('div');
+        removeCircle.className = 'seat-remove-circle';
+        removeCircle.textContent = '\u00d7';
+        removeCircle.title = 'Remove player';
+        removeCircle.addEventListener('click', (function (idx) {
+          return function (e) {
+            e.stopPropagation();
+            removeSeat(idx);
+          };
+        })(i));
+        topRow.appendChild(removeCircle);
       } else {
+        // Empty slot — just the AI/Human toggle badge
         var emptyBadge = document.createElement('div');
         var pt = seatPendingType[i] || 'ai';
         emptyBadge.className = 'seat-type-badge ' + (pt === 'human' ? 'human' : 'ai');
@@ -1015,8 +1055,10 @@ var UI = (function () {
             renderSetupSeats();
           };
         })(i));
-        el.appendChild(emptyBadge);
+        topRow.appendChild(emptyBadge);
       }
+
+      el.appendChild(topRow);
 
       // Avatar
       var avatar = document.createElement('div');
@@ -1041,39 +1083,6 @@ var UI = (function () {
           };
         })(i));
         el.appendChild(nameEl);
-
-        // Remove button — dashed circle next to player
-        var removeCircle = document.createElement('div');
-        removeCircle.className = 'seat-remove-circle';
-        removeCircle.textContent = '\u00d7';
-        removeCircle.title = 'Remove player';
-        positionRemoveCircle(removeCircle, getSetupAvatarSize());
-        removeCircle.addEventListener('click', (function (idx) {
-          return function (e) {
-            e.stopPropagation();
-            removeSeat(idx);
-          };
-        })(i));
-        el.appendChild(removeCircle);
-
-        // Dealer chip: solid gold "D" if this seat is the dealer, hollow
-        // dashed gold "D" otherwise (click to make this seat the dealer).
-        var dealerBadge = document.createElement('div');
-        dealerBadge.className = seat.isDealer
-          ? 'seat-dealer-chip'
-          : 'seat-dealer-slot';
-        dealerBadge.textContent = 'D';
-        if (!seat.isDealer) {
-          dealerBadge.title = 'Make dealer';
-          dealerBadge.addEventListener('click', (function (idx) {
-            return function (e) {
-              e.stopPropagation();
-              setDealer(idx);
-            };
-          })(i));
-        }
-        positionDealerChip(dealerBadge, getSetupAvatarSize());
-        el.appendChild(dealerBadge);
       }
 
       // Click to select character or add player
@@ -1759,49 +1768,48 @@ var UI = (function () {
         seat.className = 'game-seat';
         seat.dataset.player = p.id;
         seat.style.left = pos.x + 'px';
-        // The avatar sits UNDER the game-seat-total (score) element, so the
-        // seat's top must be shifted up by the total's reserved height so the
-        // avatar itself is centered at pos.y (tangent to the table's outer edge).
-        var gameTotalOffset = 2.3 * getVmin(); // min-height 2vmin + margin-bottom 0.3vmin
-        seat.style.top = (pos.y - gameTotalOffset - getGameAvatarSize() / 2) + 'px';
+        // The avatar sits UNDER the .game-seat-top-row (dealer + score + status),
+        // so the seat's top must be shifted up by that row's reserved height
+        // so the avatar itself is centered at pos.y (tangent to the table's
+        // outer edge).
+        var topRowOffset = 2.3 * getVmin(); // min-height 2vmin + margin-bottom 0.3vmin
+        seat.style.top = (pos.y - topRowOffset - getGameAvatarSize() / 2) + 'px';
 
-        // Total score — ABOVE the avatar, centered
+        // Top row: [dealer chip] [score] [status pill]
+        // Dealer chip is tangent to the LEFT of the score, status to the RIGHT.
+        // This keeps the widest vertical cross-section at just the avatar
+        // width, making the overall seat footprint narrower.
+        var topRow = document.createElement('div');
+        topRow.className = 'game-seat-top-row';
+
+        if (p.isDealer) {
+          var chip = document.createElement('div');
+          chip.className = 'seat-dealer-chip';
+          chip.textContent = 'D';
+          topRow.appendChild(chip);
+        }
+
         var totalEl = document.createElement('div');
         totalEl.className = 'game-seat-total';
         totalEl.dataset.total = p.id;
         totalEl.textContent = '\u00a0';
         totalEl.style.visibility = 'hidden';
-        seat.appendChild(totalEl);
+        topRow.appendChild(totalEl);
 
-        // Avatar wrapper — holds the avatar plus absolutely-positioned dealer
-        // chip (left-tangent) and status pill (right-tangent). The avatar stays
-        // perfectly centered in the seat column; labels above/below align to it.
-        var avatarWrap = document.createElement('div');
-        avatarWrap.className = 'game-seat-avatar-wrap';
-
-        // Dealer chip — tangent to LEFT edge of avatar
-        if (p.isDealer) {
-          var chip = document.createElement('div');
-          chip.className = 'seat-dealer-chip';
-          chip.textContent = 'D';
-          avatarWrap.appendChild(chip);
-        }
-
-        // Avatar (the circle)
-        var avatarEl = document.createElement('div');
-        avatarEl.className = 'game-seat-avatar';
-        avatarEl.appendChild(SpriteEngine.createSpriteImg(p.animal));
-        avatarWrap.appendChild(avatarEl);
-
-        // Status (STAY / BUST / WINNER) — tangent to RIGHT edge of avatar
         var statusEl = document.createElement('div');
         statusEl.className = 'game-seat-status';
         statusEl.dataset.status = p.id;
         statusEl.textContent = '\u00a0';
         statusEl.style.visibility = 'hidden';
-        avatarWrap.appendChild(statusEl);
+        topRow.appendChild(statusEl);
 
-        seat.appendChild(avatarWrap);
+        seat.appendChild(topRow);
+
+        // Avatar (the circle) — no more wrap needed now that chips are in top row
+        var avatarEl = document.createElement('div');
+        avatarEl.className = 'game-seat-avatar';
+        avatarEl.appendChild(SpriteEngine.createSpriteImg(p.animal));
+        seat.appendChild(avatarEl);
 
         // Name — below avatar, centered
         var nameEl = document.createElement('div');
