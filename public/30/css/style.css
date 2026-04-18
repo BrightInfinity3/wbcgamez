@@ -353,10 +353,11 @@ html, body {
 }
 .setup-header {
   position: absolute;
-  /* Sit just above the top character's top-row. Table center is at
-     H/2 + 2.5vmin (shifted down), so top seat visual top is ~cy - 46.6vmin
-     = H/2 + 2.5 - 46.6 = H/2 - 44.1vmin. Anchor just above that. */
-  bottom: calc(50% + 45vmin);
+  /* Sit just above the top character's top-row. 46vmin is the sweet spot:
+     - HUD top stays ≥ 0 on narrow aspect ratios (vmin=H, H/2=50vmin minus
+       ~4vmin HUD height minus 46vmin offset = 0vmin from top).
+     - HUD bottom stays above top seat top (cy - 46.6vmin). */
+  bottom: calc(50% + 46vmin);
   left: 0;
   right: 0;
   display: flex;
@@ -388,7 +389,9 @@ html, body {
 .player-count-control {
   position: absolute;
   left: 50%;
-  top: calc(50% - 14vmin);
+  /* Follows the 1vmin table-center shift so PLAYERS/DEAL stay centered
+     as a pair on the table center (not the viewport center). */
+  top: calc(50% - 13vmin);
   transform: translateX(-50%);
   z-index: 30;
   display: flex;
@@ -430,7 +433,8 @@ html, body {
 .setup-deal-btn {
   position: absolute;
   left: 50%;
-  top: calc(50% + 5vmin);
+  /* Follows the 1vmin table-center shift. */
+  top: calc(50% + 6vmin);
   transform: translateX(-50%);
   z-index: 30;
   font-size: 2vmin;
@@ -545,11 +549,13 @@ html, body {
 
 /* Top row: [dealer / dealer-slot] [AI/Human badge] [remove X].
    Grid layout so the BADGE is exactly at the seat's horizontal center,
-   with dealer and remove flanking it symmetrically. */
+   with dealer and remove flanking it symmetrically. width: 100% is
+   needed so the 1fr tracks have a basis to size against. */
 .seat-top-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  width: 100%;
   margin-bottom: 0.3vmin;
   white-space: nowrap;
   min-height: 3vmin;
@@ -751,11 +757,15 @@ html, body {
 
 /* Top row: [dealer chip] [score] [status pill] — grid so the SCORE is
    always exactly at the seat's horizontal center, with dealer and status
-   flanking it symmetrically (regardless of their rendered widths). */
+   flanking it symmetrically (regardless of their rendered widths).
+   width: 100% is critical — without it the grid shrink-wraps to content
+   width and the 1fr tracks collapse, so dealer/status don't align
+   properly to the score edges. */
 .game-seat-top-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  width: 100%;
   margin-bottom: 0.3vmin;
   white-space: nowrap;
   min-height: 2vmin;
@@ -1001,11 +1011,13 @@ html, body {
 /* ---------- Game Actions (Draw/Stay below center deck) ---------- */
 /* CSS Grid with two equal columns keeps the gap mathematically centered
    regardless of each button's rendered width. The container's overall
-   translate(-50%) puts the gap-center exactly on the deck's x-axis. */
+   translate(-50%) puts the gap-center exactly on the deck's x-axis.
+   Top offset accounts for the 1vmin table-center shift: deck bottom is at
+   cy + 5.55vmin = H/2 + 6.55vmin; buttons sit just below that. */
 .game-actions {
   position: absolute;
   left: 50%;
-  top: calc(50% + 6vmin);
+  top: calc(50% + 7.5vmin);
   transform: translate(-50%, 0);
   z-index: 30;
   display: grid;
@@ -1082,11 +1094,13 @@ html, body {
 /* Positioned so the label's BOTTOM sits ~1vmin above the top of the deck —
    mirroring the gap between the deck's bottom and the DRAW/STAY buttons. */
 /* Single inline-block with text-align:center ensures perfect centering —
-   flex + gap can cause sub-pixel drift that shows up visually. */
+   flex + gap can cause sub-pixel drift that shows up visually. The vertical
+   offset accounts for the 1vmin table-center shift: deck top is at cy - 5.55vmin
+   = H/2 - 4.55vmin, so CARDS REMAINING sits just above that. */
 .deck-info {
   position: absolute;
   left: 50%;
-  bottom: calc(50% + 6vmin);
+  bottom: calc(50% + 5.5vmin);
   transform: translate(-50%, 0);
   z-index: 25;
   font-family: var(--font-display);
@@ -1111,9 +1125,8 @@ html, body {
 /* ---------- Game HUD (floating, no background bar) ---------- */
 .game-hud {
   position: absolute;
-  /* Sit just above the top character's top-row. Table center is shifted
-     down 2.5vmin, so HUD offset from center is reduced by the same. */
-  bottom: calc(50% + 45vmin);
+  /* Matches setup-header. */
+  bottom: calc(50% + 46vmin);
   left: 0;
   right: 0;
   padding: 0.6vmin 1.4vmin;

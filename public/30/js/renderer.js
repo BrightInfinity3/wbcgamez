@@ -1220,11 +1220,11 @@ var Renderer = (function () {
   }
 
   function getTableCenter() {
-    // Shift the table center slightly below geometric center to leave margin
-    // at the top for the HUD and top character's score row. Without this,
-    // the top-row top (at ~cy - 46.6vmin) can go off-screen on landscape
-    // aspect ratios where vmin = H.
-    return { x: W / 2, y: H / 2 + 2.5 * getVmin() };
+    // Small downward shift from geometric center to leave margin at top for
+    // the HUD + top character's score row on narrow-aspect viewports. Kept
+    // small (1vmin) so the bottom character's name doesn't get clipped on
+    // landscape phones where H is limited.
+    return { x: W / 2, y: H / 2 + 1 * getVmin() };
   }
 
   // Table felt radius — same for both portrait and landscape to look proportionally identical.
