@@ -957,7 +957,7 @@ var Renderer = (function () {
   function drawDeck(x, y, count) {
     var stackHeight = Math.min(count, 10);
     // Deck scales proportionally with viewport (matches card scale)
-    var deckScale = 1.0 * (Math.min(W, H) / 1080);
+    var deckScale = 1.1 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
     var offsetScale = deckScale;
 
@@ -1241,12 +1241,13 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
-    // Place the hand 32% of the way from the seat toward the center.
-    // This keeps cards close to the outer edge of the felt (using the empty
-    // space there) without overlapping the tangent avatars or their labels.
+    // Place the hand 33.3% of the way from the seat toward the center.
+    // Slightly more inward than the smaller-card version (0.32) so the
+    // 10%-bigger cards still have their outer edge in the same spot near
+    // the outer felt — they grow laterally and toward the center.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.32,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.32
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.333,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.333
     };
   }
 

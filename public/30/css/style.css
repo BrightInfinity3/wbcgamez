@@ -678,10 +678,39 @@ html, body {
   display: flex;
 }
 
+/* Hollow dealer slot — click to make this character the dealer.
+   Same footprint as .seat-dealer-chip so positionDealerChip works identically. */
+.seat-dealer-slot {
+  position: absolute;
+  width: 3.3vmin;
+  height: 3.3vmin;
+  border-radius: 50%;
+  border: 0.14vmin dashed var(--gold);
+  background: rgba(212, 160, 23, 0.08);
+  color: var(--gold);
+  font-size: 1.4vmin;
+  font-weight: 700;
+  font-family: var(--font-display);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  line-height: 1;
+  transition: all var(--transition-fast) ease;
+}
+
+.seat-dealer-slot:hover {
+  background: rgba(212, 160, 23, 0.25);
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  transform: scale(1.1);
+}
+
 /* ---------- Game Screen Seats ---------- */
 .game-seat {
   position: absolute;
-  width: 14vmin;
+  width: 6.7vmin; /* avatar width — labels are centered on this */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -690,12 +719,13 @@ html, body {
   pointer-events: none;
 }
 
-.game-seat-top {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Avatar wrap — holds the circle and anchors dealer chip / status pill.
+   Dealer and status are absolute-positioned so the avatar itself stays
+   exactly centered on the seat's horizontal axis. */
+.game-seat-avatar-wrap {
   position: relative;
-  gap: 0.4vmin;
+  width: 6.7vmin;
+  height: 6.7vmin;
 }
 
 .game-seat-avatar {
@@ -707,7 +737,6 @@ html, body {
   overflow: hidden;
   position: relative;
   transition: all var(--transition-fast);
-  flex-shrink: 0;
 }
 
 .game-seat-avatar img {
@@ -725,7 +754,7 @@ html, body {
   text-align: center;
 }
 
-/* Total score — ABOVE the avatar */
+/* Total score — ABOVE the avatar, centered on the seat */
 .game-seat-total {
   font-family: var(--font-display);
   font-size: 2.0vmin;
@@ -735,20 +764,24 @@ html, body {
   margin-bottom: 0.3vmin;
   text-align: center;
   min-height: 2vmin;
+  white-space: nowrap;
 }
 
-/* Status (STAY / BUSTED / WINNER) — RIGHT of the avatar */
+/* Status (STAY / BUST / WINNER) — tangent to RIGHT edge of avatar circle */
 .game-seat-status {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 1.1vmin;
   font-weight: 600;
-  padding: 0.1vmin 0.5vmin;
+  padding: 0.1vmin 0.6vmin;
   border-radius: 0.8vmin;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.5;
-  min-width: 3.5vmin;
   text-align: center;
-  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .game-seat-status.passed {
@@ -771,21 +804,15 @@ html, body {
   color: var(--win-gold);
 }
 
-/* Dealer chip — LEFT of avatar in game-seat-top row */
+/* Dealer chip — tangent to LEFT edge of avatar circle */
 .game-seat .seat-dealer-chip {
-  position: static;
+  position: absolute;
+  right: 100%;  /* chip's right edge touches avatar wrap's left edge */
+  top: 50%;
+  transform: translateY(-50%);
   width: 2.8vmin;
   height: 2.8vmin;
   font-size: 1.1vmin;
-  flex-shrink: 0;
-}
-
-/* Invisible spacer so non-dealer seats keep avatar centered */
-.seat-dealer-chip-spacer {
-  width: 2.8vmin;
-  height: 2.8vmin;
-  flex-shrink: 0;
-  visibility: hidden;
 }
 
 /* ---------- Cards in Hand ---------- */
@@ -945,7 +972,7 @@ html, body {
 .game-actions {
   position: absolute;
   left: 50%;
-  top: calc(50% + 8vmin);
+  top: calc(50% + 6.5vmin);  /* closer to the deck */
   transform: translateX(-50%);
   z-index: 30;
   display: flex;
@@ -955,6 +982,12 @@ html, body {
 
 .btn-action-menu {
   justify-self: end;
+}
+
+/* Equal widths so the DRAW/STAY gap is symmetric about the deck's center */
+.btn-draw, .btn-stay {
+  min-width: 9.5vmin;
+  text-align: center;
 }
 
 .btn-draw {
@@ -1015,7 +1048,7 @@ html, body {
 .deck-info {
   position: absolute;
   left: 50%;
-  top: calc(50% - 10vmin);
+  top: calc(50% - 7vmin);  /* closer to the deck */
   transform: translateX(-50%);
   z-index: 25;
   display: flex;

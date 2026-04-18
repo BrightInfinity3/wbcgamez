@@ -52,6 +52,10 @@ var UI = (function () {
   var pickerIsNewSeat = false; // true when picker is for adding a new player
   var addOrder = []; // tracks order players were added for removal
   var gameFlowLocked = false;
+  // When false, dealer is randomly re-assigned every time a seat is added/removed.
+  // When the player clicks a hollow dealer slot, this becomes true and the
+  // dealer stays put until the player manually reassigns it again.
+  var dealerManuallySet = false;
 
   // ---- Phase State ----
   var gamePhase = 'none'; // 'none' | 'setup' | 'playing'
@@ -896,15 +900,29 @@ var UI = (function () {
     return SpriteEngine.getAnimalName(animalId);
   }
 
+  // Pick a random occupied seat to be the dealer (current dealer is included
+  // in the shuffle so it may or may not change).
+  function randomizeDealer() {
+    var occupied = [];
+    for (var i = 0; i < setupSeats.length; i++) {
+      if (setupSeats[i].occupied) occupied.push(i);
+    }
+    if (occupied.length === 0) return;
+    for (var j = 0; j < setupSeats.length; j++) setupSeats[j].isDealer = false;
+    var pick = occupied[Math.floor(Math.random() * occupied.length)];
+    setupSeats[pick].isDealer = true;
+  }
+
   function autoFillSeats() {
     initSetupSeats();
     addOrder = [];
+    dealerManuallySet = false;
 
     // Use fixed seat fill order
     var finalSeats = SEAT_FILL_ORDER.slice(0, playerCount);
 
     // Slot 0 (bottom) is always the human; all other slots are AI.
-    // Each player gets a random animal; last-added player is the dealer.
+    // Each player gets a random animal.
     for (var k = 0; k < finalSeats.length; k++) {
       var idx = finalSeats[k];
       var animal = getRandomAnimal();
@@ -912,9 +930,11 @@ var UI = (function () {
       setupSeats[idx].animal = animal;
       setupSeats[idx].isHuman = (idx === 0);
       setupSeats[idx].name = getAnimalName(animal);
-      setupSeats[idx].isDealer = (k === finalSeats.length - 1);
+      setupSeats[idx].isDealer = false; // will be set by randomizeDealer below
       addOrder.push(idx);
     }
+
+    randomizeDealer();
 
     document.getElementById('player-count-display').textContent = playerCount;
   }
@@ -1010,6 +1030,25 @@ var UI = (function () {
           };
         })(i));
         el.appendChild(removeCircle);
+
+        // Dealer chip: solid gold "D" if this seat is the dealer, hollow
+        // dashed gold "D" otherwise (click to make this seat the dealer).
+        var dealerBadge = document.createElement('div');
+        dealerBadge.className = seat.isDealer
+          ? 'seat-dealer-chip'
+          : 'seat-dealer-slot';
+        dealerBadge.textContent = 'D';
+        if (!seat.isDealer) {
+          dealerBadge.title = 'Make dealer';
+          dealerBadge.addEventListener('click', (function (idx) {
+            return function (e) {
+              e.stopPropagation();
+              setDealer(idx);
+            };
+          })(i));
+        }
+        positionDealerChip(dealerBadge, getSetupAvatarSize());
+        el.appendChild(dealerBadge);
       }
 
       // Click to select character or add player
@@ -1097,10 +1136,16 @@ var UI = (function () {
     var hasHuman = setupSeats.some(function (s) { return s.occupied && s.isHuman; });
     setupSeats[seatIdx].isHuman = (seatIdx === 0 && !hasHuman);
     setupSeats[seatIdx].nameEdited = false;
+    setupSeats[seatIdx].isDealer = false;
 
-    // If no dealer set, make this one the dealer
-    var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
-    if (!hasDealer) setupSeats[seatIdx].isDealer = true;
+    // Dealer: random among all occupied seats (unless player set manually)
+    if (!dealerManuallySet) {
+      randomizeDealer();
+    } else {
+      // Ensure at least one dealer exists (manual set cleared? — fallback)
+      var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
+      if (!hasDealer) randomizeDealer();
+    }
 
     addOrder.push(seatIdx);
     playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1124,10 +1169,13 @@ var UI = (function () {
     var orderIdx = addOrder.indexOf(seatIdx);
     if (orderIdx !== -1) addOrder.splice(orderIdx, 1);
 
-    // Reassign dealer if needed
-    if (wasDealer) {
-      var first = setupSeats.find(function (s) { return s.occupied; });
-      if (first) first.isDealer = true;
+    // Dealer: random among remaining seats (unless player set it manually,
+    // in which case we only reshuffle if the removed seat WAS the dealer).
+    if (!dealerManuallySet) {
+      randomizeDealer();
+    } else if (wasDealer) {
+      randomizeDealer();
+      dealerManuallySet = false; // manual dealer was removed — back to random mode
     }
 
     playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1149,6 +1197,7 @@ var UI = (function () {
       setupSeats[i].isDealer = false;
     }
     setupSeats[seatIdx].isDealer = true;
+    dealerManuallySet = true; // user picked — stop the random reshuffle
     renderSetupSeats();
   }
 
@@ -1359,7 +1408,7 @@ var UI = (function () {
   function getCardScale() {
     var W = window.innerWidth;
     var H = window.innerHeight;
-    return 1.0 * (Math.min(W, H) / 1080);
+    return 1.1 * (Math.min(W, H) / 1080);
   }
 
   function animateCanvasDeal(card, playerId, seatIndex) {
@@ -1708,40 +1757,37 @@ var UI = (function () {
         totalEl.style.visibility = 'hidden';
         seat.appendChild(totalEl);
 
-        // Middle row: dealer chip (left) + avatar (center) + status (right)
-        var topRow = document.createElement('div');
-        topRow.className = 'game-seat-top';
+        // Avatar wrapper — holds the avatar plus absolutely-positioned dealer
+        // chip / status pills so the avatar is always perfectly centered in the
+        // seat (labels above/below stay centered on the avatar).
+        var avatarWrap = document.createElement('div');
+        avatarWrap.className = 'game-seat-avatar-wrap';
 
-        // Dealer chip — to the LEFT of the avatar
+        // Dealer chip — tangent to LEFT edge of avatar
         if (p.isDealer) {
           var chip = document.createElement('div');
           chip.className = 'seat-dealer-chip';
           chip.textContent = 'D';
-          topRow.appendChild(chip);
-        } else {
-          // Invisible spacer so avatar stays centered
-          var spacer = document.createElement('div');
-          spacer.className = 'seat-dealer-chip-spacer';
-          topRow.appendChild(spacer);
+          avatarWrap.appendChild(chip);
         }
 
-        // Avatar
-        var avatarWrap = document.createElement('div');
-        avatarWrap.className = 'game-seat-avatar';
-        avatarWrap.appendChild(SpriteEngine.createSpriteImg(p.animal));
-        topRow.appendChild(avatarWrap);
+        // Avatar (the circle)
+        var avatarEl = document.createElement('div');
+        avatarEl.className = 'game-seat-avatar';
+        avatarEl.appendChild(SpriteEngine.createSpriteImg(p.animal));
+        avatarWrap.appendChild(avatarEl);
 
-        // Status (placeholder, reserve space) — RIGHT of avatar
+        // Status (STAY/BUST/WINNER) — tangent to RIGHT edge of avatar
         var statusEl = document.createElement('div');
         statusEl.className = 'game-seat-status';
         statusEl.dataset.status = p.id;
         statusEl.textContent = '\u00a0';
         statusEl.style.visibility = 'hidden';
-        topRow.appendChild(statusEl);
+        avatarWrap.appendChild(statusEl);
 
-        seat.appendChild(topRow);
+        seat.appendChild(avatarWrap);
 
-        // Name — below avatar row
+        // Name — below avatar, centered
         var nameEl = document.createElement('div');
         nameEl.className = 'game-seat-name';
         nameEl.textContent = p.name;
@@ -1769,11 +1815,12 @@ var UI = (function () {
     // relative to table on every device (not comically huge on mobile).
     var vmin = Math.min(W, H);
     var viewScale = vmin / 1080; // reference: 1080p desktop
-    // Smaller cards so adjacent players' fans don't overlap at 8 players
-    var cardScale = 1.0 * viewScale;
-    var cardSpacing = 26 * viewScale;
+    // 10% bigger than before, but outer edge stays in the same spot thanks to
+    // the matching inward bump of getHandPosition (see renderer.js).
+    var cardScale = 1.1 * viewScale;
+    var cardSpacing = 28.6 * viewScale;
     var CARDS_PER_ROW = 3;
-    var ROW_INSET = 24 * viewScale; // how far inward each new row shifts toward center
+    var ROW_INSET = 26.4 * viewScale; // how far inward each new row shifts toward center
 
     // Draw deck pile at table center
     Renderer.drawDeck(tableCenter.x, tableCenter.y, Game.getDeckCount());
@@ -1887,10 +1934,10 @@ var UI = (function () {
       el.textContent = 'Stay';
     } else if (status === 'busted') {
       el.classList.add('busted');
-      el.textContent = 'Bust!';
+      el.textContent = 'Bust';
     } else if (status === 'winner') {
       el.classList.add('winner');
-      el.textContent = 'Winner!';
+      el.textContent = 'Winner';
     } else {
       el.textContent = '\u00a0';
       el.style.visibility = 'hidden';
