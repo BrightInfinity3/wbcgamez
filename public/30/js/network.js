@@ -27,15 +27,43 @@ var Network = (function () {
   var heartbeatTimer = null;
   var peerHeartbeats = {};  // peerId -> { timer, lastSeen, graceTimer }
 
-  // ICE server config — STUN only
+  // ICE server config — STUN + TURN. STUN handles the common case (NAT
+  // hole-punching), TURN is the fallback when the network blocks direct
+  // device-to-device UDP. Routers with "AP isolation", strict-symmetric
+  // NATs, mobile hotspots, and guest Wi-Fi networks commonly need TURN or
+  // the peers will never actually reach each other.
+  //
+  // Open Relay Project (https://www.metered.ca/tools/openrelay/) provides
+  // free public TURN relays with no signup — shared demo credentials.
+  // We pass UDP, TCP and TLS variants so at least one port escapes most
+  // corporate/guest firewalls.
   var ICE_CONFIG = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' }
-    ]
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceCandidatePoolSize: 4
   };
 
   // Generate a short, readable room code (no ambiguous chars)
@@ -267,16 +295,13 @@ var Network = (function () {
           fail(msg);
         });
 
-        // Connection timeout
+        // Connection timeout — give TURN negotiation room (it can take
+        // 10–15s on congested networks). 20s total before giving up.
         setTimeout(function () {
           if (!resolved) {
-            var hint = '';
-            if (iceState === 'checking' || iceState === 'new') {
-              hint = ' Your network may be blocking direct device connections (WiFi AP isolation). Try disabling "AP isolation" in your router settings, connecting one device via ethernet, or using a mobile hotspot.';
-            }
-            fail('Could not reach room ' + roomCode + '.' + hint);
+            fail('Could not reach room ' + roomCode + '. Check the room code, make sure the host is still in the lobby, and try again. If both devices are on the same Wi-Fi, try turning one device\'s Wi-Fi off and back on.');
           }
-        }, 12000);
+        }, 20000);
       });
 
       peer.on('disconnected', function () {

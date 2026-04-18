@@ -283,6 +283,24 @@ var Online = (function () {
       return;
     }
 
+    // Defensive: make sure we haven't already assigned seats for this peer.
+    // If they somehow re-sent a join_request while already approved, don't
+    // double-assign or wipe their existing seats — just re-send the current
+    // state so they can catch up.
+    if (lobbyState.devices[peerId]) {
+      console.warn('[Online] approveGuest: peer already registered, re-syncing:', peerId);
+      Network.send(peerId, {
+        type: 'join_response',
+        data: { approved: true, deviceId: peerId }
+      });
+      broadcastLobbyState();
+      renderJoinRequests();
+      return;
+    }
+
+    console.log('[Online] Approving guest:', request.username, 'peerId:', peerId, 'players:', request.playerCount);
+    console.log('[Online] Lobby BEFORE approve:', totalPlayerCount(), 'players');
+
     // Register device
     lobbyState.devices[peerId] = {
       username: request.username,
@@ -291,7 +309,9 @@ var Online = (function () {
     };
 
     // Assign seats
-    assignPlayersToSeats(peerId, request.username, request.playerCount);
+    var assigned = assignPlayersToSeats(peerId, request.username, request.playerCount);
+    console.log('[Online] Assigned', request.username, 'to seats:', assigned);
+    console.log('[Online] Lobby AFTER approve:', totalPlayerCount(), 'players');
 
     // Notify guest
     Network.send(peerId, {
@@ -477,10 +497,23 @@ var Online = (function () {
   }
 
   // ---- Host: Broadcast lobby state to all guests ----
+  // Deep-clones lobbyState before sending so the object that reaches the
+  // PeerJS JSON serializer is immutable relative to our own state. Without
+  // this, a subsequent host-side mutation (e.g. another guest joining
+  // mid-serialization) could in theory race with the serializer. Also
+  // helpful for diagnosing races — we log the seat occupants on each
+  // broadcast so the host console shows exactly what each guest receives.
   function broadcastLobbyState() {
+    var snapshot = JSON.parse(JSON.stringify(lobbyState));
+    if (typeof console !== 'undefined' && console.log) {
+      var occ = snapshot.seats.map(function (s, i) {
+        return s.occupied ? (i + ':' + (s.isAI ? 'AI' : (s.deviceId || '?').slice(-4)) + '/' + s.name) : null;
+      }).filter(Boolean);
+      console.log('[Online] Broadcasting lobby state — seats:', occ.join(', '));
+    }
     Network.broadcast({
       type: 'lobby_state',
-      data: lobbyState
+      data: snapshot
     });
   }
 

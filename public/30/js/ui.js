@@ -618,6 +618,11 @@ var UI = (function () {
     var lobbyState = Online.getLobbyState();
     var myDeviceId = Online.getMyDeviceId();
     var isHost = Online.isHost();
+    // Every seat reserves the same top-row height above the avatar — matches
+    // the local setup layout so the avatar center lands exactly at pos.y
+    // (tangent to the table's outer wood edge). Empty seats get an invisible
+    // placeholder row so their total height matches filled seats.
+    var lobbyTopRowOffset = 3 * getVmin();
 
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
       var seat = lobbyState.seats[i];
@@ -627,14 +632,16 @@ var UI = (function () {
       el.className = 'seat' + (seat.occupied ? '' : ' seat-empty');
       el.style.position = 'absolute';
       el.style.left = pos.x + 'px';
-      el.style.top = (pos.y - getSetupAvatarSize() / 2) + 'px';
+      el.style.top = (pos.y - lobbyTopRowOffset - getSetupAvatarSize() / 2) + 'px';
       el.dataset.seat = i;
 
-      if (seat.occupied) {
-        // Top row: [badge] [remove X (host only, AI only)]
-        var topRow = document.createElement('div');
-        topRow.className = 'seat-top-row';
+      // Top row — always present (for consistent vertical layout). Filled
+      // seats fill it with a username/AI badge + optional remove button;
+      // empty seats leave it blank so they reserve the same height.
+      var topRow = document.createElement('div');
+      topRow.className = 'seat-top-row';
 
+      if (seat.occupied) {
         var badge = document.createElement('div');
         badge.className = 'seat-type-badge';
         if (seat.isAI) {
@@ -663,12 +670,15 @@ var UI = (function () {
           })(i));
           topRow.appendChild(removeCircle);
         }
+      }
 
-        el.appendChild(topRow);
+      el.appendChild(topRow);
 
-        // Avatar
-        var avatar = document.createElement('div');
-        avatar.className = 'seat-avatar';
+      // Avatar
+      var avatar = document.createElement('div');
+      avatar.className = 'seat-avatar';
+
+      if (seat.occupied) {
         if (seat.animal) {
           avatar.appendChild(SpriteEngine.createSpriteImg(seat.animal));
           avatar.querySelector('img').style.width = '100%';
@@ -681,9 +691,17 @@ var UI = (function () {
             return function () { openOnlineAnimalPicker(seatIdx); };
           })(i));
         }
-        el.appendChild(avatar);
+      } else if (isHost) {
+        // Empty seat — host can click it to add an AI
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', (function (idx) {
+          return function () { Online.addAI(idx); };
+        })(i));
+      }
+      el.appendChild(avatar);
 
-        // Editable name
+      // Editable name (filled seats only)
+      if (seat.occupied) {
         var nameEl = document.createElement('div');
         nameEl.className = 'seat-name';
         nameEl.textContent = seat.name;
@@ -697,18 +715,6 @@ var UI = (function () {
           })(i));
         }
         el.appendChild(nameEl);
-      } else {
-        // Empty seat — host can click to add AI
-        var emptyAvatar = document.createElement('div');
-        emptyAvatar.className = 'seat-avatar';
-        el.appendChild(emptyAvatar);
-
-        if (isHost) {
-          el.style.cursor = 'pointer';
-          el.addEventListener('click', (function (idx) {
-            return function () { Online.addAI(idx); };
-          })(i));
-        }
       }
 
       ring.appendChild(el);
