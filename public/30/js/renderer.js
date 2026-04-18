@@ -1004,22 +1004,27 @@ var Renderer = (function () {
     // Deck scales proportionally with viewport (matches card scale)
     var deckScale = 1.1 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
-    var offsetScale = deckScale;
+    var stepPx = 0.8 * deckScale; // offset between stacked cards
+    // The TOP (visible) card is rendered last; lay out the stack so THAT
+    // card sits at (x, y). The cards below it fan down-and-right from there.
+    var topOffset = (stackHeight > 0 ? stackHeight - 1 : 0) * stepPx;
 
-    // Bottom shadow for the whole stack
+    // Bottom shadow — anchored near the bottom card's position
     if (stackHeight > 0) {
       var shadow = acquireSprite();
       shadow.texture = shadowTexture;
-      shadow.position.set(x + 3 * offsetScale, y + 5 * offsetScale);
+      shadow.position.set(x + topOffset + 3 * deckScale, y + topOffset + 5 * deckScale);
       shadow.scale.set(texScale);
       shadow.alpha = 0.2;
     }
 
     for (var i = 0; i < stackHeight; i++) {
-      var offset = i * 0.8 * offsetScale;
+      // depthFromTop: 0 for top card, (stackHeight-1) for bottom card
+      var depthFromTop = stackHeight - 1 - i;
+      var offset = depthFromTop * stepPx;
       var s = acquireSprite();
       s.texture = backTexture;
-      s.position.set(x - offset, y - offset);
+      s.position.set(x + offset, y + offset);
       s.scale.set(texScale);
     }
 

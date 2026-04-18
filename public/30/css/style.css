@@ -1014,12 +1014,13 @@ html, body {
 /* CSS Grid with two equal columns keeps the gap mathematically centered
    regardless of each button's rendered width. The container's overall
    translate(-50%) puts the gap-center exactly on the deck's x-axis.
-   Top offset accounts for the 1.5vmin table-center shift: deck bottom is
-   at cy + 5.55vmin = H/2 + 7.05vmin; buttons sit just below that. */
+   Top offset accounts for the 1.5vmin table shift AND the deck stack
+   fanning down-right (~0.73vmin at 10 cards): deck bottom at
+   cy + 5.55vmin + 0.73vmin = H/2 + 7.78vmin. Buttons sit ~1vmin below. */
 .game-actions {
   position: absolute;
   left: 50%;
-  top: calc(50% + 8vmin);
+  top: calc(50% + 8.8vmin);
   transform: translate(-50%, 0);
   z-index: 30;
   display: grid;
@@ -1112,16 +1113,16 @@ html, body {
 }
 
 .deck-info-label {
-  font-size: 0.7vmin;
-  color: #7ab8d9;
+  font-size: 1.4vmin;
+  color: #2f5d85; /* darker blue */
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .deck-info-value {
-  font-size: 0.7vmin;
-  color: #7ab8d9;
-  margin-left: 0.3vmin;
+  font-size: 1.4vmin;
+  color: #2f5d85;
+  margin-left: 0.4vmin;
 }
 
 /* ---------- Game HUD (floating, no background bar) ---------- */
@@ -1575,29 +1576,43 @@ html, body {
   animation: pulseGlowSilver 2s ease-in-out infinite;
 }
 
-/* Gold halo behind the current leader's score. */
+/* Gold halo on the current leader's score — strong pulsing glow like the
+   silver active-player halo on avatars. */
 .game-seat-total.leader {
+  color: #fff5d0;
+  /* display: inline-block via min-width gives box-shadow a surface to
+     emanate from; combined with text-shadow gives both a wrap halo and
+     a bright text edge. */
   position: relative;
-  color: #fff2bf;
+  display: inline-block;
+  padding: 0.15vmin 0.5vmin;
+  border-radius: 1.5vmin;
+  box-shadow:
+    0 0 15px rgba(255, 215, 85, 1),
+    0 0 40px rgba(255, 205, 70, 0.95),
+    0 0 80px rgba(255, 195, 50, 0.8),
+    0 0 120px rgba(255, 185, 30, 0.5);
   text-shadow:
-    0 0 6px rgba(255, 215, 85, 0.95),
-    0 0 14px rgba(255, 200, 60, 0.8),
-    0 0 24px rgba(255, 190, 40, 0.55);
-  animation: leaderGlowPulse 2.2s ease-in-out infinite;
+    0 0 6px rgba(255, 225, 120, 0.95),
+    0 0 14px rgba(255, 210, 80, 0.8),
+    0 0 24px rgba(255, 200, 60, 0.55);
+  animation: leaderGlowPulse 2s ease-in-out infinite;
 }
 
 @keyframes leaderGlowPulse {
   0%, 100% {
-    text-shadow:
-      0 0 6px rgba(255, 215, 85, 0.85),
-      0 0 14px rgba(255, 200, 60, 0.7),
-      0 0 24px rgba(255, 190, 40, 0.45);
+    box-shadow:
+      0 0 15px rgba(255, 215, 85, 1),
+      0 0 40px rgba(255, 205, 70, 0.95),
+      0 0 80px rgba(255, 195, 50, 0.8),
+      0 0 120px rgba(255, 185, 30, 0.5);
   }
   50% {
-    text-shadow:
-      0 0 10px rgba(255, 220, 100, 1),
-      0 0 22px rgba(255, 205, 70, 0.95),
-      0 0 34px rgba(255, 195, 50, 0.7);
+    box-shadow:
+      0 0 22px rgba(255, 225, 105, 1),
+      0 0 55px rgba(255, 215, 90, 1),
+      0 0 95px rgba(255, 205, 70, 0.9),
+      0 0 140px rgba(255, 195, 50, 0.65);
   }
 }
 
