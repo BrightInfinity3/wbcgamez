@@ -1114,15 +1114,16 @@ html, body {
 
 .deck-info-label {
   font-size: 1.4vmin;
-  color: #2f5d85; /* darker blue */
+  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 
 .deck-info-value {
   font-size: 1.4vmin;
-  color: #2f5d85;
+  color: var(--gold-light);
   margin-left: 0.4vmin;
+  font-weight: 700;
 }
 
 /* ---------- Game HUD (floating, no background bar) ---------- */

@@ -1959,28 +1959,39 @@ var UI = (function () {
     updateLeaderGlow();
   }
 
-  // Add a golden glow to the score of the player currently leading (highest
-  // total among non-busted players). Removes the glow from everyone else.
+  // Add a golden glow to the score of THE SINGLE player currently leading.
+  // Ties are broken using the game's tiebreaker rules: more cards wins, then
+  // most-recent draw wins. Ensures only one seat glows at a time.
   function updateLeaderGlow() {
     var state = Game.getState && Game.getState();
     if (!state || !state.players || !state.hands) return;
-    var bestTotal = -Infinity;
-    var leaderIds = [];
+    var candidates = [];
     for (var i = 0; i < state.players.length; i++) {
       var p = state.players[i];
       var hand = state.hands[p.id];
       if (!hand || hand.busted) continue;
       var t = CardSystem.handTotal(hand.cards);
-      if (t > bestTotal) {
-        bestTotal = t;
-        leaderIds = [p.id];
-      } else if (t === bestTotal) {
-        leaderIds.push(p.id);
-      }
+      if (t <= 0) continue;
+      candidates.push({
+        id: p.id,
+        total: t,
+        cards: hand.cards.length,
+        lastDrawOrder: (hand.lastDrawOrder !== undefined ? hand.lastDrawOrder : -1),
+        turnPos: state.turnOrder.indexOf(p.id)
+      });
     }
+    // Tiebreaker order matching Game.determineWinner:
+    //   1) highest total   2) more cards   3) more recent draw   4) turn position
+    candidates.sort(function (a, b) {
+      if (b.total !== a.total) return b.total - a.total;
+      if (b.cards !== a.cards) return b.cards - a.cards;
+      if (b.lastDrawOrder !== a.lastDrawOrder) return b.lastDrawOrder - a.lastDrawOrder;
+      return a.turnPos - b.turnPos;
+    });
+    var leaderId = candidates.length ? candidates[0].id : null;
     document.querySelectorAll('.game-seat-total').forEach(function (el) {
       var pid = el.dataset.total;
-      if (pid !== undefined && leaderIds.indexOf(Number(pid)) !== -1 && bestTotal > 0) {
+      if (leaderId !== null && pid !== undefined && Number(pid) === leaderId) {
         el.classList.add('leader');
       } else {
         el.classList.remove('leader');

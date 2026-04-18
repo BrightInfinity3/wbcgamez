@@ -1333,12 +1333,12 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
-    // Hand position is 33.3% of the way from the seat toward the center.
-    // Keeps cards anchored near the outer felt — they grow laterally and
-    // toward the deck, never past the wood border.
+    // Hand position is 37% of the way from the seat toward the center.
+    // Slightly inward of previous (was 0.333) so the top character's name
+    // doesn't overlap the top row of their cards.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.333,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.333
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.37,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.37
     };
   }
 
