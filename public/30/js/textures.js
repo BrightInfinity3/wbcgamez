@@ -337,18 +337,6 @@ var Textures = (function () {
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Dotted gold line connecting the decorative dots. Traces the full ring
-    // with a dashed stroke, so visually the dots at top and bottom are
-    // joined by a dotted line along both sides of the table.
-    ctx.strokeStyle = '#d4a849';
-    ctx.lineWidth = 1.2;
-    ctx.globalAlpha = 0.55;
-    ctx.setLineDash([2, 5]);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
     // Ornamental dots along the ring
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#d4a849';

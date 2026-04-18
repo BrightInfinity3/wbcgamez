@@ -1333,12 +1333,13 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
-    // Hand position is 37% of the way from the seat toward the center.
-    // Slightly inward of previous (was 0.333) so the top character's name
-    // doesn't overlap the top row of their cards.
+    // Hand position is 34% of the way from the seat toward the center.
+    // Tuned so the top character's name sits just above their top card row
+    // without overlap while leaving comfortable space between the card fan
+    // and the wood border.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.37,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.37
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.34,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.34
     };
   }
 

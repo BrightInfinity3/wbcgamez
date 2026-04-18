@@ -522,6 +522,21 @@ html, body {
   border-radius: 0.56vmin;
 }
 
+/* Debug centerline — vertical line through the horizontal center of the
+   viewport, top to bottom. Used to verify game-element alignment. Temporary;
+   remove when alignment work is complete. */
+.debug-centerline {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(255, 80, 80, 0.55);
+  z-index: 40;
+  pointer-events: none;
+}
+
 .game-table .table-felt {
   display: none;
 }
@@ -1315,7 +1330,10 @@ html, body {
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 0.5em;
   padding: 0.5em 0.75em;
-  display: flex;
+  /* Grid with fixed name + cards + total columns so every row has the
+     cards starting at exactly the same x regardless of name length. */
+  display: grid;
+  grid-template-columns: 5rem 1fr 3rem;
   align-items: center;
   gap: 0.6em;
   text-align: left;
@@ -1334,13 +1352,14 @@ html, body {
   font-family: var(--font-display);
   font-size: 0.95rem;
   color: var(--text-light);
-  min-width: 3.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-hand-cards {
   display: flex;
   gap: 0.1em;
-  flex: 1;
 }
 
 /* Result mini cards — 2x symbol size */
@@ -1371,7 +1390,6 @@ html, body {
   font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 700;
-  min-width: 2.8rem;
   text-align: right;
 }
 
@@ -1577,43 +1595,40 @@ html, body {
   animation: pulseGlowSilver 2s ease-in-out infinite;
 }
 
-/* Gold halo on the current leader's score — strong pulsing glow like the
-   silver active-player halo on avatars. */
+/* Gold halo on the current leader's score — doubled in intensity/spread
+   so it's clearly the most prominent glow on the table. */
 .game-seat-total.leader {
   color: #fff5d0;
-  /* display: inline-block via min-width gives box-shadow a surface to
-     emanate from; combined with text-shadow gives both a wrap halo and
-     a bright text edge. */
   position: relative;
   display: inline-block;
   padding: 0.15vmin 0.5vmin;
   border-radius: 1.5vmin;
   box-shadow:
-    0 0 15px rgba(255, 215, 85, 1),
-    0 0 40px rgba(255, 205, 70, 0.95),
-    0 0 80px rgba(255, 195, 50, 0.8),
-    0 0 120px rgba(255, 185, 30, 0.5);
+    0 0 30px rgba(255, 215, 85, 1),
+    0 0 80px rgba(255, 205, 70, 0.95),
+    0 0 160px rgba(255, 195, 50, 0.8),
+    0 0 240px rgba(255, 185, 30, 0.5);
   text-shadow:
-    0 0 6px rgba(255, 225, 120, 0.95),
-    0 0 14px rgba(255, 210, 80, 0.8),
-    0 0 24px rgba(255, 200, 60, 0.55);
+    0 0 12px rgba(255, 225, 120, 1),
+    0 0 28px rgba(255, 210, 80, 0.9),
+    0 0 48px rgba(255, 200, 60, 0.65);
   animation: leaderGlowPulse 2s ease-in-out infinite;
 }
 
 @keyframes leaderGlowPulse {
   0%, 100% {
     box-shadow:
-      0 0 15px rgba(255, 215, 85, 1),
-      0 0 40px rgba(255, 205, 70, 0.95),
-      0 0 80px rgba(255, 195, 50, 0.8),
-      0 0 120px rgba(255, 185, 30, 0.5);
+      0 0 30px rgba(255, 215, 85, 1),
+      0 0 80px rgba(255, 205, 70, 0.95),
+      0 0 160px rgba(255, 195, 50, 0.8),
+      0 0 240px rgba(255, 185, 30, 0.5);
   }
   50% {
     box-shadow:
-      0 0 22px rgba(255, 225, 105, 1),
-      0 0 55px rgba(255, 215, 90, 1),
-      0 0 95px rgba(255, 205, 70, 0.9),
-      0 0 140px rgba(255, 195, 50, 0.65);
+      0 0 44px rgba(255, 225, 105, 1),
+      0 0 110px rgba(255, 215, 90, 1),
+      0 0 190px rgba(255, 205, 70, 0.9),
+      0 0 280px rgba(255, 195, 50, 0.65);
   }
 }
 
@@ -1674,15 +1689,20 @@ html, body {
   .winner-detail { font-size: 0.75rem; margin-top: 0.2em; }
   .all-busted-msg { font-size: 1.05rem; margin-bottom: 0.3em; }
   .results-hands { gap: 0.25em; margin-bottom: 0.5em; }
-  .result-hand { padding: 0.3em 0.5em; gap: 0.4em; border-radius: 0.4em; }
-  .result-hand-name { font-size: 0.7rem; min-width: 2.5rem; }
+  .result-hand {
+    padding: 0.3em 0.5em;
+    gap: 0.4em;
+    border-radius: 0.4em;
+    grid-template-columns: 4rem 1fr 2.2rem;
+  }
+  .result-hand-name { font-size: 0.7rem; }
   .result-hand-cards { gap: 0.08em; }
   .result-mini-card {
     width: 0.85rem; height: 1.2rem;
     font-size: 0.55rem;
     border-radius: 0.12rem;
   }
-  .result-hand-total { font-size: 0.9rem; min-width: 2rem; }
+  .result-hand-total { font-size: 0.9rem; }
   .results-scoreboard { margin-bottom: 0.5em; }
   .scoreboard-title { font-size: 0.85rem; margin-bottom: 0.25em; }
   .scoreboard-table { font-size: 0.7rem; }
@@ -1714,8 +1734,13 @@ html, body {
   .winner-detail { font-size: 0.7rem; margin-top: 0.15em; }
   .all-busted-msg { font-size: 1rem; margin-bottom: 0.25em; }
   .results-hands { gap: 0.2em; margin-bottom: 0.4em; }
-  .result-hand { padding: 0.2em 0.5em; gap: 0.4em; border-radius: 0.4em; }
-  .result-hand-name { font-size: 0.7rem; min-width: 2.5rem; }
+  .result-hand {
+    padding: 0.2em 0.5em;
+    gap: 0.4em;
+    border-radius: 0.4em;
+    grid-template-columns: 4rem 1fr 2rem;
+  }
+  .result-hand-name { font-size: 0.7rem; }
   .result-hand-cards { gap: 0.08em; }
   .result-mini-card {
     width: 0.9rem;
@@ -1723,7 +1748,7 @@ html, body {
     font-size: 0.55rem;
     border-radius: 0.1rem;
   }
-  .result-hand-total { font-size: 0.85rem; min-width: 2rem; }
+  .result-hand-total { font-size: 0.85rem; }
   .results-scoreboard { margin-bottom: 0.4em; }
   .scoreboard-title { font-size: 0.85rem; margin-bottom: 0.2em; }
   .scoreboard-table { font-size: 0.7rem; }
