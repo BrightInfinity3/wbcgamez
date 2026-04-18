@@ -78,7 +78,7 @@ var UI = (function () {
     return 7.8 * getVmin(); // matches 7.8vmin in CSS
   }
   function getGameAvatarSize() {
-    return 6.7 * getVmin(); // matches 6.7vmin in CSS
+    return 7.8 * getVmin(); // matches 7.8vmin in CSS (same as setup)
   }
 
   // ---- Dealer Chip Positioning ----
@@ -105,6 +105,58 @@ var UI = (function () {
   var glowingPlayerId = null;  // playerId to highlight cards with golden glow
   var glowStartTime = 0;      // timestamp for pulsing animation
   var resizeListenerAdded = false;
+
+  // ---- Unified viewport-change handler (resize + orientation change) ----
+  // Rebuilds the canvas renderer and re-lays out HTML overlays. Called on
+  // window.resize, orientationchange, and visualViewport.resize. On iOS, the
+  // orientation event fires BEFORE the final layout is known, so we re-run
+  // after short delays to catch the settled dimensions.
+  function handleViewportChange() {
+    if (!canvasReady) return;
+    if (!document.getElementById('screen-game').classList.contains('active')) return;
+    Renderer.resize();
+    if (gamePhase === 'setup') {
+      renderSetupSeats();
+    } else if (gamePhase === 'online-lobby') {
+      renderOnlineLobbySeats();
+    } else {
+      positionGameOverlays();
+    }
+  }
+
+  function installViewportHandlers() {
+    if (resizeListenerAdded) return;
+    resizeListenerAdded = true;
+
+    var scheduled = false;
+    function schedule() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(function () {
+        scheduled = false;
+        handleViewportChange();
+      });
+    }
+
+    // Standard resize
+    window.addEventListener('resize', schedule);
+
+    // iOS Safari: orientationchange fires before layout settles; re-run on a
+    // series of delayed ticks to catch the correct dimensions after the URL
+    // bar and status bar redraw.
+    window.addEventListener('orientationchange', function () {
+      handleViewportChange();
+      setTimeout(handleViewportChange, 100);
+      setTimeout(handleViewportChange, 300);
+      setTimeout(handleViewportChange, 600);
+    });
+
+    // visualViewport captures changes that `resize` misses on mobile (like
+    // the URL bar hiding/showing while scrolling, keyboard, pinch-zoom).
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', schedule);
+    }
+  }
 
   // ---- Initialize ----
   function init() {
@@ -524,19 +576,7 @@ var UI = (function () {
         Renderer.hideDeckCount();
       });
 
-      if (!resizeListenerAdded) {
-        window.addEventListener('resize', function () {
-          if (canvasReady && document.getElementById('screen-game').classList.contains('active')) {
-            Renderer.resize();
-            if (gamePhase === 'setup' || gamePhase === 'online-lobby') {
-              renderOnlineLobbySeats();
-            } else {
-              positionGameOverlays();
-            }
-          }
-        });
-        resizeListenerAdded = true;
-      }
+      installViewportHandlers();
 
       renderOnlineLobbySeats();
     });
@@ -851,22 +891,7 @@ var UI = (function () {
         Renderer.hideDeckCount();
       });
 
-      // Add resize listener once
-      if (!resizeListenerAdded) {
-        window.addEventListener('resize', function () {
-          if (canvasReady && document.getElementById('screen-game').classList.contains('active')) {
-            Renderer.resize();
-            if (gamePhase === 'setup') {
-              renderSetupSeats();
-            } else if (gamePhase === 'online-lobby') {
-              renderOnlineLobbySeats();
-            } else {
-              positionGameOverlays();
-            }
-          }
-        });
-        resizeListenerAdded = true;
-      }
+      installViewportHandlers();
 
       prepareSetupScreen();
     });
@@ -1414,7 +1439,7 @@ var UI = (function () {
   function getCardScale() {
     var W = window.innerWidth;
     var H = window.innerHeight;
-    return 1.1 * (Math.min(W, H) / 1080);
+    return 1.21 * (Math.min(W, H) / 1080);
   }
 
   function animateCanvasDeal(card, playerId, seatIndex) {
@@ -1712,22 +1737,7 @@ var UI = (function () {
       var felt = document.querySelector('#screen-game .table-felt');
       if (felt) felt.style.display = 'none';
 
-      // Add resize listener once
-      if (!resizeListenerAdded) {
-        window.addEventListener('resize', function () {
-          if (canvasReady && document.getElementById('screen-game').classList.contains('active')) {
-            Renderer.resize();
-            if (gamePhase === 'setup') {
-              renderSetupSeats();
-            } else if (gamePhase === 'online-lobby') {
-              renderOnlineLobbySeats();
-            } else {
-              positionGameOverlays();
-            }
-          }
-        });
-        resizeListenerAdded = true;
-      }
+      installViewportHandlers();
 
       // Reset hand display
       handDisplay = {};
@@ -1820,12 +1830,12 @@ var UI = (function () {
     // relative to table on every device (not comically huge on mobile).
     var vmin = Math.min(W, H);
     var viewScale = vmin / 1080; // reference: 1080p desktop
-    // 10% bigger than before, but outer edge stays in the same spot thanks to
-    // the matching inward bump of getHandPosition (see renderer.js).
-    var cardScale = 1.1 * viewScale;
-    var cardSpacing = 28.6 * viewScale;
+    // Another 10% bigger; outer edge still anchored near the felt edge via
+    // getHandPosition below (inward ratio bumped to keep it in place).
+    var cardScale = 1.21 * viewScale;
+    var cardSpacing = 31.5 * viewScale;
     var CARDS_PER_ROW = 3;
-    var ROW_INSET = 26.4 * viewScale; // how far inward each new row shifts toward center
+    var ROW_INSET = 29 * viewScale; // how far inward each new row shifts toward center
 
     // Draw deck pile at table center
     Renderer.drawDeck(tableCenter.x, tableCenter.y, Game.getDeckCount());

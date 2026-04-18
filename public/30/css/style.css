@@ -70,6 +70,10 @@
 html, body {
   width: 100%;
   height: 100%;
+  /* Better iOS/iPad support during orientation change / URL bar transitions.
+     dvh = dynamic viewport height (tracks the currently-visible area). */
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   font-family: var(--font-body);
   color: var(--text-light);
@@ -342,7 +346,8 @@ html, body {
 }
 .setup-header {
   position: absolute;
-  top: 0;
+  /* Sit just above the top character (top seat visual top is ~cy - 43.3vmin). */
+  bottom: calc(50% + 44vmin);
   left: 0;
   right: 0;
   display: flex;
@@ -708,9 +713,10 @@ html, body {
 }
 
 /* ---------- Game Screen Seats ---------- */
+/* Size matched to setup seats (7.8vmin avatar / 1.4vmin name). */
 .game-seat {
   position: absolute;
-  width: 6.7vmin; /* avatar width — labels are centered on this */
+  width: 7.8vmin; /* avatar width — labels are centered on this */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -720,17 +726,17 @@ html, body {
 }
 
 /* Avatar wrap — holds the circle and anchors dealer chip / status pill.
-   Dealer and status are absolute-positioned so the avatar itself stays
-   exactly centered on the seat's horizontal axis. */
+   Dealer is absolute-positioned so the avatar itself stays exactly
+   centered on the seat's horizontal axis. */
 .game-seat-avatar-wrap {
   position: relative;
-  width: 6.7vmin;
-  height: 6.7vmin;
+  width: 7.8vmin;
+  height: 7.8vmin;
 }
 
 .game-seat-avatar {
-  width: 6.7vmin;
-  height: 6.7vmin;
+  width: 7.8vmin;
+  height: 7.8vmin;
   border-radius: 50%;
   border: 0.21vmin solid var(--wood-mid);
   background: rgba(20, 30, 25, 0.9);
@@ -748,7 +754,7 @@ html, body {
 
 .game-seat-name {
   font-family: var(--font-display);
-  font-size: 1.3vmin;
+  font-size: 1.4vmin;
   color: var(--text-light);
   margin-top: 0.3vmin;
   text-align: center;
@@ -1076,7 +1082,8 @@ html, body {
 /* ---------- Game HUD (floating, no background bar) ---------- */
 .game-hud {
   position: absolute;
-  top: 0;
+  /* Sit just above the top character's score (~cy - 42.6vmin for game). */
+  bottom: calc(50% + 44vmin);
   left: 0;
   right: 0;
   padding: 0.6vmin 1.4vmin;

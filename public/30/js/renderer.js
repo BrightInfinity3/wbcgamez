@@ -957,7 +957,7 @@ var Renderer = (function () {
   function drawDeck(x, y, count) {
     var stackHeight = Math.min(count, 10);
     // Deck scales proportionally with viewport (matches card scale)
-    var deckScale = 1.1 * (Math.min(W, H) / 1080);
+    var deckScale = 1.21 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
     var offsetScale = deckScale;
 
@@ -1219,9 +1219,9 @@ var Renderer = (function () {
     return 3.9 * getVmin();
   }
 
-  // Game seat avatar radius (matches .game-seat-avatar CSS: 6.7vmin)
+  // Game seat avatar radius (matches .game-seat-avatar CSS: 7.8vmin — same as setup)
   function getGameAvatarRadius() {
-    return 3.35 * getVmin();
+    return 3.9 * getVmin();
   }
 
   // Setup seats — avatar's inner edge tangent to table's outer edge (avatar fully outside table).
@@ -1241,13 +1241,13 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
-    // Place the hand 33.3% of the way from the seat toward the center.
-    // Slightly more inward than the smaller-card version (0.32) so the
-    // 10%-bigger cards still have their outer edge in the same spot near
-    // the outer felt — they grow laterally and toward the center.
+    // Hand position is 34.5% of the way from the seat toward the center.
+    // Bumped in slightly each time the cards grow so their outer edge stays
+    // anchored near the outer felt — cards grow laterally and toward the
+    // deck, never past the wood border.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.333,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.333
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.345,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.345
     };
   }
 
