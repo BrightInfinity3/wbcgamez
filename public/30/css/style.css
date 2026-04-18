@@ -548,12 +548,11 @@ html, body {
 }
 
 /* Top row: [dealer / dealer-slot] [AI/Human badge] [remove X].
-   Grid layout so the BADGE is exactly at the seat's horizontal center,
-   with dealer and remove flanking it symmetrically. width: 100% is
-   needed so the 1fr tracks have a basis to size against. */
+   Uses minmax(0, 1fr) on the side tracks so wide dealer/X chips can't
+   grow their track and push the badge off-center. */
 .seat-top-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   width: 100%;
   margin-bottom: 0.3vmin;
@@ -757,13 +756,15 @@ html, body {
 
 /* Top row: [dealer chip] [score] [status pill] — grid so the SCORE is
    always exactly at the seat's horizontal center, with dealer and status
-   flanking it symmetrically (regardless of their rendered widths).
-   width: 100% is critical — without it the grid shrink-wraps to content
-   width and the 1fr tracks collapse, so dealer/status don't align
-   properly to the score edges. */
+   flanking it symmetrically.
+   CRITICAL: `minmax(0, 1fr)` instead of plain `1fr` — plain 1fr grows
+   to fit its content if the content is wider than the fractional share,
+   which would push the score off-center when a wide STAY/BUST pill
+   appears. minmax(0, 1fr) caps the track so the content overflows
+   instead, keeping the center column (score) anchored at seat center. */
 .game-seat-top-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   width: 100%;
   margin-bottom: 0.3vmin;

@@ -165,6 +165,19 @@ var UI = (function () {
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', schedule);
     }
+
+    // When the tab becomes visible after being backgrounded, the WebGL
+    // canvas can be blank (context lost without firing the event, especially
+    // on integrated-GPU Chrome). Force a full rebuild of the table texture
+    // on return-to-visibility to recover.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && canvasReady &&
+          document.getElementById('screen-game').classList.contains('active')) {
+        // Force-run bypassing the no-op guard
+        lastW = -1;
+        schedule();
+      }
+    });
   }
 
   // ---- Initialize ----

@@ -769,15 +769,34 @@ var Renderer = (function () {
     particleTex = particleTextures[0]; // default fallback
   }
 
+  // Reusable holder for older textures to destroy on the NEXT texture swap,
+  // so we don't free a texture that might still be referenced by the current
+  // frame's draw calls (which was the source of intermittent blank-screen
+  // glitches — destroy(true) synchronously freed GPU memory out from under
+  // the active batch).
+  var _tableTexToDestroy = null;
+
   function updateTableTexture() {
-    if (!tableSprite || W === 0 || H === 0) return;
-    var tableCanvas = renderTableToCanvas();
-    var oldTex = tableSprite.texture;
-    tableSprite.texture = PIXI.Texture.from(tableCanvas);
-    tableSprite.width = W;
-    tableSprite.height = H;
-    if (oldTex && oldTex !== PIXI.Texture.EMPTY) {
-      oldTex.destroy(true);
+    if (!tableSprite || !W || !H) return;
+    try {
+      var tableCanvas = renderTableToCanvas();
+      if (!tableCanvas) return;
+      var oldTex = tableSprite.texture;
+      // Create the new texture BEFORE releasing the old one
+      var newTex = PIXI.Texture.from(tableCanvas);
+      tableSprite.texture = newTex;
+      tableSprite.width = W;
+      tableSprite.height = H;
+      tableSprite.renderable = true;
+      // Destroy the *previous* pending-destroy texture now — it's had at least
+      // one full frame to be unreferenced by anything in flight.
+      if (_tableTexToDestroy && _tableTexToDestroy !== newTex && _tableTexToDestroy !== PIXI.Texture.EMPTY) {
+        try { _tableTexToDestroy.destroy(true); } catch (e) { /* ignore */ }
+      }
+      _tableTexToDestroy = (oldTex !== newTex && oldTex !== PIXI.Texture.EMPTY) ? oldTex : null;
+    } catch (e) {
+      // Never let a table-texture update crash the render loop
+      console && console.warn && console.warn('updateTableTexture failed:', e);
     }
   }
 
@@ -1143,27 +1162,36 @@ var Renderer = (function () {
     gameRenderCallback = callback;
     if (tickerFn) app.ticker.remove(tickerFn);
     tickerFn = function () {
-      // Reset sprite pool
-      poolIndex = 0;
+      try {
+        // Reset sprite pool
+        poolIndex = 0;
 
-      // Update particles
-      updateParticles();
+        // Update particles
+        updateParticles();
 
-      // Call game render callback (populates gameLayer via drawCard/drawDeck calls)
-      if (gameRenderCallback) {
-        gameRenderCallback(null, W, H);
+        // Call game render callback (populates gameLayer via drawCard/drawDeck calls)
+        if (gameRenderCallback) {
+          gameRenderCallback(null, W, H);
+        }
+
+        // Move deck count text to top of game layer
+        if (deckCountText && deckCountText.parent !== gameLayer) {
+          gameLayer.addChild(deckCountText);
+        }
+
+        // Hide unused pool sprites
+        for (var i = poolIndex; i < spritePool.length; i++) {
+          spritePool[i].visible = false;
+        }
+
+        // Sync flying card sprite positions
+        syncAllFlyingCards();
+      } catch (err) {
+        // Swallow render errors so the ticker keeps running. Without this,
+        // a single bad frame (e.g. during a resize) can halt the ticker and
+        // the game appears "stuck" with a blank table.
+        console && console.warn && console.warn('render frame error:', err);
       }
-
-      // Move deck count text to top of game layer
-      if (deckCountText) gameLayer.addChild(deckCountText);
-
-      // Hide unused pool sprites
-      for (var i = poolIndex; i < spritePool.length; i++) {
-        spritePool[i].visible = false;
-      }
-
-      // Sync flying card sprite positions
-      syncAllFlyingCards();
     };
     app.ticker.add(tickerFn);
   }
