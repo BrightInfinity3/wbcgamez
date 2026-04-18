@@ -980,12 +980,13 @@ var UI = (function () {
       setupSeats[idx].animal = animal;
       setupSeats[idx].isHuman = (idx === 0);
       setupSeats[idx].name = getAnimalName(animal);
-      setupSeats[idx].isDealer = false; // will be set by randomizeDealer below
+      setupSeats[idx].isDealer = false; // no dealer pre-assigned
       addOrder.push(idx);
     }
 
-    randomizeDealer();
-
+    // No dealer is auto-selected in setup. All occupied seats show a hollow
+    // dashed "D" slot; the player can click one to pre-pick. When they click
+    // Deal, a random dealer is chosen if none was manually set.
     document.getElementById('player-count-display').textContent = playerCount;
   }
 
@@ -1193,15 +1194,8 @@ var UI = (function () {
     setupSeats[seatIdx].isHuman = (seatIdx === 0 && !hasHuman);
     setupSeats[seatIdx].nameEdited = false;
     setupSeats[seatIdx].isDealer = false;
-
-    // Dealer: random among all occupied seats (unless player set manually)
-    if (!dealerManuallySet) {
-      randomizeDealer();
-    } else {
-      // Ensure at least one dealer exists (manual set cleared? — fallback)
-      var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
-      if (!hasDealer) randomizeDealer();
-    }
+    // No auto-assign. Dealer is chosen either by clicking a hollow "D" slot
+    // during setup, or randomly at deal-time if none was picked.
 
     addOrder.push(seatIdx);
     playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1225,13 +1219,10 @@ var UI = (function () {
     var orderIdx = addOrder.indexOf(seatIdx);
     if (orderIdx !== -1) addOrder.splice(orderIdx, 1);
 
-    // Dealer: random among remaining seats (unless player set it manually,
-    // in which case we only reshuffle if the removed seat WAS the dealer).
-    if (!dealerManuallySet) {
-      randomizeDealer();
-    } else if (wasDealer) {
-      randomizeDealer();
-      dealerManuallySet = false; // manual dealer was removed — back to random mode
+    // If the manually-chosen dealer was removed, clear the manual flag so
+    // the game picks a random dealer at deal time.
+    if (wasDealer) {
+      dealerManuallySet = false;
     }
 
     playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1261,8 +1252,8 @@ var UI = (function () {
     var btn = document.getElementById('btn-deal');
     var occupied = setupSeats.filter(function (s) { return s.occupied; });
     var hasHuman = occupied.some(function (s) { return s.isHuman; });
-    var hasDealer = occupied.some(function (s) { return s.isDealer; });
-    btn.disabled = occupied.length < 2 || !hasDealer || !hasHuman;
+    // No dealer requirement — one is picked at random on Deal if none chosen
+    btn.disabled = occupied.length < 2 || !hasHuman;
   }
 
   // ---- Character Picker ----
@@ -1321,14 +1312,7 @@ var UI = (function () {
       setupSeats[pickerTargetSeat].isHuman = true;
       setupSeats[pickerTargetSeat].nameEdited = false;
       setupSeats[pickerTargetSeat].isDealer = false;
-
-      // Dealer reshuffle (unless manually set)
-      if (!dealerManuallySet) {
-        randomizeDealer();
-      } else {
-        var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
-        if (!hasDealer) randomizeDealer();
-      }
+      // No auto-assign; dealer chosen by click or at deal-time.
 
       addOrder.push(pickerTargetSeat);
       playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1358,6 +1342,12 @@ var UI = (function () {
   // ================================================================
 
   function startGame() {
+    // If no dealer was chosen during setup, pick a random one now.
+    var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
+    if (!hasDealer) {
+      randomizeDealer();
+    }
+
     // Build players from setup
     var players = [];
     var dealerIdx = 0;
@@ -1965,6 +1955,37 @@ var UI = (function () {
       el.textContent = total;
       el.style.visibility = 'visible';
     }
+    // Re-evaluate the leader across all scores after this update
+    updateLeaderGlow();
+  }
+
+  // Add a golden glow to the score of the player currently leading (highest
+  // total among non-busted players). Removes the glow from everyone else.
+  function updateLeaderGlow() {
+    var state = Game.getState && Game.getState();
+    if (!state || !state.players || !state.hands) return;
+    var bestTotal = -Infinity;
+    var leaderIds = [];
+    for (var i = 0; i < state.players.length; i++) {
+      var p = state.players[i];
+      var hand = state.hands[p.id];
+      if (!hand || hand.busted) continue;
+      var t = CardSystem.handTotal(hand.cards);
+      if (t > bestTotal) {
+        bestTotal = t;
+        leaderIds = [p.id];
+      } else if (t === bestTotal) {
+        leaderIds.push(p.id);
+      }
+    }
+    document.querySelectorAll('.game-seat-total').forEach(function (el) {
+      var pid = el.dataset.total;
+      if (pid !== undefined && leaderIds.indexOf(Number(pid)) !== -1 && bestTotal > 0) {
+        el.classList.add('leader');
+      } else {
+        el.classList.remove('leader');
+      }
+    });
   }
 
   function updatePlayerStatus(playerId, status) {

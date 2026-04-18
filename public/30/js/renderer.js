@@ -1158,11 +1158,40 @@ var Renderer = (function () {
   //  RENDER LOOP (PixiJS ticker)
   // ================================================================
 
+  // Health check: periodically verify the table sprite has a real texture.
+  // If not (e.g. after a silent WebGL context loss, or a race where PIXI
+  // init finished but the first updateTableTexture ran at 0x0 dimensions),
+  // rebuild it. Runs every 60 frames (~1s at 60fps) with a cooldown so it
+  // can't thrash if rebuilds also fail.
+  var _healthFrameCounter = 0;
+  var _healthCooldownFrames = 0;
+  function checkTableHealth() {
+    _healthFrameCounter++;
+    if (_healthCooldownFrames > 0) { _healthCooldownFrames--; return; }
+    if (_healthFrameCounter < 60) return;
+    _healthFrameCounter = 0;
+    if (!tableSprite || !W || !H) return;
+    var tex = tableSprite.texture;
+    var needsRebuild =
+      !tex ||
+      tex === PIXI.Texture.EMPTY ||
+      !tex.source ||
+      (tex.source.width || 0) === 0 ||
+      (tex.source.height || 0) === 0;
+    if (needsRebuild) {
+      try { updateTableTexture(); } catch (e) { /* ignore */ }
+      _healthCooldownFrames = 120; // don't retry for 2s
+    }
+  }
+
   function startLoop(callback) {
     gameRenderCallback = callback;
     if (tickerFn) app.ticker.remove(tickerFn);
     tickerFn = function () {
       try {
+        // Periodic self-heal for canvas rendering
+        checkTableHealth();
+
         // Reset sprite pool
         poolIndex = 0;
 
@@ -1248,21 +1277,21 @@ var Renderer = (function () {
   }
 
   function getTableCenter() {
-    // Small downward shift from geometric center to leave margin at top for
-    // the HUD + top character's score row on narrow-aspect viewports. Kept
-    // small (1vmin) so the bottom character's name doesn't get clipped on
-    // landscape phones where H is limited.
-    return { x: W / 2, y: H / 2 + 1 * getVmin() };
+    // Shift down 1.5vmin. With the smaller 32vmin felt and bigger HUD text,
+    // this balances top margin (for HUD above top character) and bottom
+    // margin (for the name below the bottom character) on landscape phones.
+    return { x: W / 2, y: H / 2 + 1.5 * getVmin() };
   }
 
-  // Table felt radius — same for both portrait and landscape to look proportionally identical.
-  // Sized to fill mobile-portrait horizontal space:
-  //   34vmin felt + 2.5vmin wood = 36.5vmin outer radius.
-  //   Avatar tangent: orbit = 36.5 + 3.9 = 40.4vmin.
-  //   Avatar far edge from center = 44.3vmin — leaves ~6vmin margin on a phone
-  //   portrait (W/2 = 50vmin).
+  // Table felt radius. Kept slightly smaller than the absolute max so that on
+  // narrow-aspect viewports (landscape phone, 16:9 desktop) the larger HUD
+  // bar at the top still has room above the top character's score row.
+  //   32vmin felt + 2.5vmin wood = 34.5vmin outer radius.
+  //   Avatar tangent: orbit = 34.5 + 3.9 = 38.4vmin.
+  //   Avatar far edge from center = 42.3vmin.
+  //   Top seat top-row top = cy - 44.7vmin.
   function getTableRadii() {
-    var r = 34 * getVmin();
+    var r = 32 * getVmin();
     return { rx: r, ry: r };
   }
 
