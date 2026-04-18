@@ -957,7 +957,7 @@ var Renderer = (function () {
   function drawDeck(x, y, count) {
     var stackHeight = Math.min(count, 10);
     // Deck scales proportionally with viewport (matches card scale)
-    var deckScale = 1.21 * (Math.min(W, H) / 1080);
+    var deckScale = 1.1 * (Math.min(W, H) / 1080);
     var texScale = deckScale / TEX_SCALE;
     var offsetScale = deckScale;
 
@@ -1241,13 +1241,12 @@ var Renderer = (function () {
   }
 
   function getHandPosition(seatPos, tableCenter) {
-    // Hand position is 34.5% of the way from the seat toward the center.
-    // Bumped in slightly each time the cards grow so their outer edge stays
-    // anchored near the outer felt — cards grow laterally and toward the
-    // deck, never past the wood border.
+    // Hand position is 33.3% of the way from the seat toward the center.
+    // Keeps cards anchored near the outer felt — they grow laterally and
+    // toward the deck, never past the wood border.
     return {
-      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.345,
-      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.345
+      x: seatPos.x + (tableCenter.x - seatPos.x) * 0.333,
+      y: seatPos.y + (tableCenter.y - seatPos.y) * 0.333
     };
   }
 

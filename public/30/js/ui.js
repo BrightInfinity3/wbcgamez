@@ -213,7 +213,7 @@ var UI = (function () {
       el.textContent = suits[i % 4];
       el.style.left = Math.random() * 100 + '%';
       el.style.animationDelay = Math.random() * 8 + 's';
-      el.style.fontSize = (1.1 + Math.random() * 1.7) + 'vmin';
+      el.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
       container.appendChild(el);
     }
   }
@@ -1439,7 +1439,7 @@ var UI = (function () {
   function getCardScale() {
     var W = window.innerWidth;
     var H = window.innerHeight;
-    return 1.21 * (Math.min(W, H) / 1080);
+    return 1.1 * (Math.min(W, H) / 1080);
   }
 
   function animateCanvasDeal(card, playerId, seatIndex) {
@@ -1774,7 +1774,8 @@ var UI = (function () {
         seat.appendChild(totalEl);
 
         // Avatar wrapper — holds the avatar plus absolutely-positioned dealer
-        // chip so the avatar stays perfectly centered in the seat column.
+        // chip (left-tangent) and status pill (right-tangent). The avatar stays
+        // perfectly centered in the seat column; labels above/below align to it.
         var avatarWrap = document.createElement('div');
         avatarWrap.className = 'game-seat-avatar-wrap';
 
@@ -1792,6 +1793,14 @@ var UI = (function () {
         avatarEl.appendChild(SpriteEngine.createSpriteImg(p.animal));
         avatarWrap.appendChild(avatarEl);
 
+        // Status (STAY / BUST / WINNER) — tangent to RIGHT edge of avatar
+        var statusEl = document.createElement('div');
+        statusEl.className = 'game-seat-status';
+        statusEl.dataset.status = p.id;
+        statusEl.textContent = '\u00a0';
+        statusEl.style.visibility = 'hidden';
+        avatarWrap.appendChild(statusEl);
+
         seat.appendChild(avatarWrap);
 
         // Name — below avatar, centered
@@ -1799,14 +1808,6 @@ var UI = (function () {
         nameEl.className = 'game-seat-name';
         nameEl.textContent = p.name;
         seat.appendChild(nameEl);
-
-        // Status (STAY / BUST / WINNER) — below the name, centered
-        var statusEl = document.createElement('div');
-        statusEl.className = 'game-seat-status';
-        statusEl.dataset.status = p.id;
-        statusEl.textContent = '\u00a0';
-        statusEl.style.visibility = 'hidden';
-        seat.appendChild(statusEl);
 
         ring.appendChild(seat);
 
@@ -1830,12 +1831,10 @@ var UI = (function () {
     // relative to table on every device (not comically huge on mobile).
     var vmin = Math.min(W, H);
     var viewScale = vmin / 1080; // reference: 1080p desktop
-    // Another 10% bigger; outer edge still anchored near the felt edge via
-    // getHandPosition below (inward ratio bumped to keep it in place).
-    var cardScale = 1.21 * viewScale;
-    var cardSpacing = 31.5 * viewScale;
+    var cardScale = 1.1 * viewScale;
+    var cardSpacing = 28.6 * viewScale;
     var CARDS_PER_ROW = 3;
-    var ROW_INSET = 29 * viewScale; // how far inward each new row shifts toward center
+    var ROW_INSET = 26.4 * viewScale; // how far inward each new row shifts toward center
 
     // Draw deck pile at table center
     Renderer.drawDeck(tableCenter.x, tableCenter.y, Game.getDeckCount());
