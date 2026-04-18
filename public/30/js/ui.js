@@ -1264,9 +1264,15 @@ var UI = (function () {
       setupSeats[pickerTargetSeat].name = getAnimalName(animalId);
       setupSeats[pickerTargetSeat].isHuman = true;
       setupSeats[pickerTargetSeat].nameEdited = false;
+      setupSeats[pickerTargetSeat].isDealer = false;
 
-      var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
-      if (!hasDealer) setupSeats[pickerTargetSeat].isDealer = true;
+      // Dealer reshuffle (unless manually set)
+      if (!dealerManuallySet) {
+        randomizeDealer();
+      } else {
+        var hasDealer = setupSeats.some(function (s) { return s.occupied && s.isDealer; });
+        if (!hasDealer) randomizeDealer();
+      }
 
       addOrder.push(pickerTargetSeat);
       playerCount = setupSeats.filter(function (s) { return s.occupied; }).length;
@@ -1758,8 +1764,7 @@ var UI = (function () {
         seat.appendChild(totalEl);
 
         // Avatar wrapper — holds the avatar plus absolutely-positioned dealer
-        // chip / status pills so the avatar is always perfectly centered in the
-        // seat (labels above/below stay centered on the avatar).
+        // chip so the avatar stays perfectly centered in the seat column.
         var avatarWrap = document.createElement('div');
         avatarWrap.className = 'game-seat-avatar-wrap';
 
@@ -1777,14 +1782,6 @@ var UI = (function () {
         avatarEl.appendChild(SpriteEngine.createSpriteImg(p.animal));
         avatarWrap.appendChild(avatarEl);
 
-        // Status (STAY/BUST/WINNER) — tangent to RIGHT edge of avatar
-        var statusEl = document.createElement('div');
-        statusEl.className = 'game-seat-status';
-        statusEl.dataset.status = p.id;
-        statusEl.textContent = '\u00a0';
-        statusEl.style.visibility = 'hidden';
-        avatarWrap.appendChild(statusEl);
-
         seat.appendChild(avatarWrap);
 
         // Name — below avatar, centered
@@ -1792,6 +1789,14 @@ var UI = (function () {
         nameEl.className = 'game-seat-name';
         nameEl.textContent = p.name;
         seat.appendChild(nameEl);
+
+        // Status (STAY / BUST / WINNER) — below the name, centered
+        var statusEl = document.createElement('div');
+        statusEl.className = 'game-seat-status';
+        statusEl.dataset.status = p.id;
+        statusEl.textContent = '\u00a0';
+        statusEl.style.visibility = 'hidden';
+        seat.appendChild(statusEl);
 
         ring.appendChild(seat);
 

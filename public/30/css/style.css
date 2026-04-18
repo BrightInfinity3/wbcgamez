@@ -602,12 +602,12 @@ html, body {
 
 .seat-type-badge {
   position: absolute;
-  top: -1.7vmin;
+  top: -3vmin;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 1.2vmin;
-  padding: 0.1vmin 0.6vmin;
-  border-radius: 0.8vmin;
+  font-size: 2.4vmin;
+  padding: 0.2vmin 1.2vmin;
+  border-radius: 1.2vmin;
   background: rgba(0, 0, 0, 0.4);
   color: var(--text-dim);
   cursor: pointer;
@@ -767,21 +767,19 @@ html, body {
   white-space: nowrap;
 }
 
-/* Status (STAY / BUST / WINNER) — tangent to RIGHT edge of avatar circle */
+/* Status (STAY / BUST / WINNER) — centered below the name */
 .game-seat-status {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-top: 0.3vmin;
   font-size: 1.1vmin;
   font-weight: 600;
-  padding: 0.1vmin 0.6vmin;
+  padding: 0.1vmin 0.8vmin;
   border-radius: 0.8vmin;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   line-height: 1.5;
   text-align: center;
   white-space: nowrap;
+  align-self: center;
 }
 
 .game-seat-status.passed {
@@ -969,14 +967,17 @@ html, body {
 }
 
 /* ---------- Game Actions (Draw/Stay below center deck) ---------- */
+/* The deck card is ~5.1vmin tall half, so its bottom edge sits at 50% + 5.1vmin.
+   We place the buttons at 50% + 6vmin to leave the same ~1vmin gap to the deck
+   that the "Cards Remaining" label has above it. */
 .game-actions {
   position: absolute;
   left: 50%;
-  top: calc(50% + 6.5vmin);  /* closer to the deck */
-  transform: translateX(-50%);
+  top: calc(50% + 6vmin);
+  transform: translate(-50%, 0);
   z-index: 30;
   display: flex;
-  gap: 1.5vmin;
+  gap: 0.8vmin;  /* tighter gap between DRAW & STAY */
   pointer-events: none;
 }
 
@@ -1045,11 +1046,13 @@ html, body {
 
 
 /* ---------- Deck Info (Cards Remaining above deck) ---------- */
+/* Positioned so the label's BOTTOM sits ~1vmin above the top of the deck —
+   mirroring the gap between the deck's bottom and the DRAW/STAY buttons. */
 .deck-info {
   position: absolute;
   left: 50%;
-  top: calc(50% - 7vmin);  /* closer to the deck */
-  transform: translateX(-50%);
+  bottom: calc(50% + 6vmin);
+  transform: translate(-50%, 0);
   z-index: 25;
   display: flex;
   align-items: center;

@@ -36,8 +36,13 @@ var Game = (function () {
   // ---- Setup ----
   function setupGame(players, dealerIndex) {
     state.players = players;
-    // Randomize initial dealer
-    state.dealerIndex = Math.floor(Math.random() * players.length);
+    // Use the dealer chosen during setup. Fall back to a random dealer only
+    // if the caller didn't pass one (defensive).
+    if (typeof dealerIndex === 'number' && dealerIndex >= 0 && dealerIndex < players.length) {
+      state.dealerIndex = dealerIndex;
+    } else {
+      state.dealerIndex = Math.floor(Math.random() * players.length);
+    }
     state.scores = {};
     state.lastWinRound = {};
     state.roundNumber = 0;
