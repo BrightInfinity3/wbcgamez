@@ -156,7 +156,7 @@ var Online = (function () {
     gamePhase = 'lobby';
     initLobbyState();
 
-    return Network.createRoom().then(function (code) {
+    return Network.createRoom(username).then(function (code) {
       lobbyState.roomCode = code;
       myDeviceId = Network.getMyPeerId();
       myUsername = username;
@@ -761,10 +761,13 @@ var Online = (function () {
     myUsername = username;
     gamePhase = 'lobby';
 
-    return Network.joinRoom(code).then(function () {
+    // The server's join_room handler automatically notifies the host with
+    // a peer_joined / join_request — we don't need to send one ourselves
+    // anymore (the old PeerJS client had to). Username + playerCount go
+    // through the server as part of the join handshake.
+    return Network.joinRoom(code, username, playerCount).then(function () {
       myDeviceId = Network.getMyPeerId();
 
-      // Set up message handler
       Network.onMessage(handleGuestMessage);
       Network.onDisconnect(function () {
         // Host disconnected — after grace period expired in network layer
@@ -772,10 +775,11 @@ var Online = (function () {
         cleanup();
       });
 
-      // Reconnection handler — guest reconnected to host after brief disconnect
+      // Reconnect — if the WebSocket drops and comes back, re-announce
+      // ourselves so the host remaps our (possibly new) peerId to our
+      // existing seats.
       Network.onReconnect(function () {
-        console.log('[Online] Guest reconnected to host, re-announcing...');
-        // Re-send join request so host knows we're back
+        console.log('[Online] Reconnected, re-announcing...');
         Network.send('host', {
           type: 'rejoin',
           data: {
@@ -784,15 +788,6 @@ var Online = (function () {
             playerCount: playerCount
           }
         });
-      });
-
-      // Send join request
-      Network.send('host', {
-        type: 'join_request',
-        data: {
-          username: username,
-          playerCount: playerCount
-        }
       });
     });
   }
