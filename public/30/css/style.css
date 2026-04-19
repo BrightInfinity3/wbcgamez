@@ -1613,13 +1613,17 @@ html, body {
    halo on the active-player avatar (same design, gold palette).
    Two layers:
      (a) A text-shadow on the digits themselves for tight inner glow
-     (b) A CIRCULAR ::before pseudo-element behind the digits whose
-         box-shadow radiates the outer halo. Because the pseudo-element
-         has border-radius: 50%, its box-shadow is perfectly round —
-         matches the silver avatar halo and avoids the rectangular
-         "bubble" shape a text-shadow-only approach produces. */
+     (b) A CIRCULAR ::before pseudo-element behind the digits, filled
+         with a gold radial gradient AND ringed by box-shadow layers so
+         the aura extends well beyond the element.
+
+   `isolation: isolate` on the parent creates a new stacking context so
+   the ::before's z-index: -1 stays BEHIND the text but above the
+   canvas — without this trick the pseudo-element falls behind the
+   table canvas and the inside of the halo renders as a dark hole. */
 .game-seat-total.leader {
   position: relative;
+  isolation: isolate;
   color: #fff5d0;
   font-weight: 900;
   text-shadow:
@@ -1637,7 +1641,14 @@ html, body {
   height: 2.5vmin;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: transparent;
+  /* Gold fill so the inside of the halo IS gold (not the dark canvas
+     behind). Dense at the centre, fading toward the edges so the disc
+     blends seamlessly into the box-shadow aura around it. */
+  background: radial-gradient(circle,
+    rgba(255, 225, 115, 0.9) 0%,
+    rgba(255, 218, 100, 0.75) 45%,
+    rgba(255, 212, 85, 0.5) 80%,
+    rgba(255, 210, 80, 0.2) 100%);
   pointer-events: none;
   z-index: -1;
   box-shadow:
