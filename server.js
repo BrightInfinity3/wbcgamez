@@ -8,15 +8,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // ---- Password-protected routes (beta/testing games) ----
+// (No protected paths right now — /30 is public as of v89 now that the
+// online multiplayer runs through the Ladybug Gamez WebSocket hub.)
 const BETA_PASSWORD = process.env.BETA_PASSWORD || "test123";
-const BETA_PATHS = ["/30"];
+const BETA_PATHS = [];
 
 app.use((req, res, next) => {
-  // Check if this request is for a protected path
   const isProtected = BETA_PATHS.some(p => req.path === p || req.path.startsWith(p + "/"));
   if (!isProtected) return next();
-
-  // Check Basic Auth header
   const auth = req.headers.authorization;
   if (auth) {
     const [scheme, encoded] = auth.split(" ");
@@ -25,7 +24,6 @@ app.use((req, res, next) => {
       if (pass === BETA_PASSWORD) return next();
     }
   }
-
   res.set("WWW-Authenticate", 'Basic realm="Beta Access"');
   res.status(401).send("Password required");
 });
