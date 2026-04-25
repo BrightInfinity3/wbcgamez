@@ -4,8 +4,46 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ---- Crash hardening for Railway ----
+// Railway sends a "deployment crashed" notification any time the
+// container's main process exits with non-zero. Two unrelated
+// problems were causing those notifications on this app:
+//
+//  1. The previous deployment's container is replaced by Railway
+//     during a release. The OLD container receives SIGTERM and
+//     exits ~immediately because Node's default SIGTERM handler
+//     is process.exit(143). Railway then logs "Deploy crashed"
+//     for the retiring container even though the swap was clean.
+//     We add an explicit SIGTERM handler that closes the HTTP
+//     server gracefully and exits with code 0 — so Railway sees
+//     a clean shutdown instead of a crash.
+//
+//  2. An unhandled exception inside one of the async leaderboard
+//     handlers (e.g. fs.writeFileSync throwing on a flaky volume
+//     mount) propagated up and killed the process. We install
+//     `process.on('uncaughtException'/'unhandledRejection')`
+//     handlers that log and CONTINUE rather than crash. This is
+//     intentional — for a static-asset + tiny-API server,
+//     persistent error spam is preferable to repeated restarts
+//     and a noisy notification stream.
+process.on("uncaughtException", (err) => {
+  console.error("[wbcgamez] uncaughtException:", err && err.stack || err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[wbcgamez] unhandledRejection:", reason);
+});
+
 // JSON body parsing for API
 app.use(express.json());
+
+// Lightweight health endpoint for Railway's healthcheck. Returns
+// 200 OK in <1ms regardless of leaderboard state. Without this,
+// the platform's default healthcheck path (/) returns the SPA
+// index.html which is fine HTTP-wise but is many KB and incurs
+// a disk read each tick.
+app.get("/health", (req, res) => {
+  res.status(200).type("text/plain").send("ok");
+});
 
 // ---- Password-protected routes (beta/testing games) ----
 // (No protected paths right now — /30 is public as of v89 now that the
@@ -58,8 +96,18 @@ function readLeaderboard() {
 }
 
 function writeLeaderboard(board) {
-  ensureDataDir();
-  fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(board, null, 2), "utf8");
+  try {
+    ensureDataDir();
+    fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(board, null, 2), "utf8");
+    return true;
+  } catch (e) {
+    // Volume mount may fail intermittently — log and signal
+    // failure to the caller instead of throwing all the way up
+    // to the Express stack (which would 500 the request and
+    // potentially kill the process if uncaught upstream).
+    console.warn("Failed to write leaderboard:", e.message);
+    return false;
+  }
 }
 
 function sortLeaderboard(board) {
@@ -104,14 +152,19 @@ app.post("/api/soloterra/leaderboard", (req, res) => {
   const sorted = sortLeaderboard(board);
   // Keep top entries (with some buffer beyond display max)
   const trimmed = sorted.slice(0, LEADERBOARD_MAX * 2);
-  writeLeaderboard(trimmed);
-
+  const ok = writeLeaderboard(trimmed);
+  if (!ok) {
+    return res.status(503).json({ error: "Leaderboard storage unavailable" });
+  }
   res.json({ success: true, leaderboard: sorted.slice(0, LEADERBOARD_MAX) });
 });
 
 // DELETE /api/soloterra/leaderboard — wipe all entries
 app.delete("/api/soloterra/leaderboard", (req, res) => {
-  writeLeaderboard([]);
+  const ok = writeLeaderboard([]);
+  if (!ok) {
+    return res.status(503).json({ error: "Leaderboard storage unavailable" });
+  }
   res.json({ success: true, message: "Leaderboard wiped" });
 });
 
@@ -124,6 +177,25 @@ app.get("/", (req, res) => {
 ensureDataDir();
 console.log(`Leaderboard data: ${LEADERBOARD_FILE}`);
 
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`WBC Gamez running on port ${PORT}`);
 });
+
+// Graceful shutdown. Railway sends SIGTERM to the retiring
+// container during a deploy; we close the HTTP server cleanly
+// and exit 0 so the platform doesn't log the rotation as a
+// crash. 5s grace before force-exit so any in-flight request
+// has a chance to drain.
+function gracefulShutdown(signal) {
+  console.log(`[wbcgamez] received ${signal}, shutting down`);
+  httpServer.close(() => {
+    console.log("[wbcgamez] HTTP server closed");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.warn("[wbcgamez] force exit after 5s grace period");
+    process.exit(0);
+  }, 5000).unref();
+}
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
