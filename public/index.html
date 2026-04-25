@@ -103,6 +103,7 @@
       background-clip: text;
       position: relative;
       display: inline-block;
+      line-height: 1.1;
     }
 
     .logo::after {
@@ -596,6 +597,13 @@
       const redLight = '#ff6659';
       const darkRed = '#b71c1c';
 
+      // Scale entire drawing 1.1× around canvas center so the card matches
+      // Laserman's effective height in the 80×80 icon box.
+      x.save();
+      x.translate(24, 24);
+      x.scale(1.1, 1.1);
+      x.translate(-24, -24);
+
       // Card dimensions
       const cLeft = 10, cTop = 4, cW = 28, cH = 40, cR = 4;
 
@@ -694,6 +702,8 @@
 
       // Rank "1" bottom-right (matching top's subpixel alignment)
       drawOne(cLeft + cW - 4.5, cTop + cH - 10);
+
+      x.restore();
     })();
 
     // Draw More Gamez controller icon
