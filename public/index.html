@@ -473,7 +473,7 @@
           <h2 class="card-title">30</h2>
         </div>
         <p class="card-desc">
-          A card game where you aim for a score of 30 without going over. Solo with smart AI or online with up to 8 players.
+          A card game where you aim for a score of 30 without going over. Local play with smart AI or online with up to 8 friends.
         </p>
         <div class="card-tags">
           <span class="tag">Card Game</span>
@@ -760,10 +760,10 @@
       if (!c) return;
       const x = c.getContext('2d');
 
-      // Scale 1.1× around canvas center to match SoloTerra's footprint
+      // Scale 1.3× around canvas center so the fan fills the icon box more
       x.save();
       x.translate(24, 24);
-      x.scale(1.1, 1.1);
+      x.scale(1.3, 1.3);
       x.translate(-24, -24);
 
       // Card fan: pivot near bottom so cards splay outward upward
