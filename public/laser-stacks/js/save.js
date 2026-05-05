@@ -8,6 +8,8 @@ var SaveSystem = (function () {
 
   var SAVE_KEY = 'laser_stacks_save';
   var SETUP_KEY = 'laser_stacks_setup';
+  var OPTIONS_KEY = 'laser_stacks_options';
+  var DEFAULT_OPTIONS = { suitStyle: 'classic' };
 
   function saveGame() {
     try {
@@ -91,6 +93,37 @@ var SaveSystem = (function () {
     return days + 'd ago';
   }
 
+  function getOptions() {
+    try {
+      var raw = localStorage.getItem(OPTIONS_KEY);
+      if (!raw) return Object.assign({}, DEFAULT_OPTIONS);
+      var parsed = JSON.parse(raw);
+      return Object.assign({}, DEFAULT_OPTIONS, parsed);
+    } catch (e) {
+      return Object.assign({}, DEFAULT_OPTIONS);
+    }
+  }
+
+  function setOptions(updates) {
+    try {
+      var merged = Object.assign({}, getOptions(), updates || {});
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify(merged));
+      return merged;
+    } catch (e) {
+      console.warn('Options save failed:', e);
+      return getOptions();
+    }
+  }
+
+  function getSuitStyle() {
+    var s = getOptions().suitStyle;
+    return s === 'laser' ? 'laser' : 'classic';
+  }
+
+  function setSuitStyle(style) {
+    setOptions({ suitStyle: style === 'laser' ? 'laser' : 'classic' });
+  }
+
   return {
     saveGame: saveGame,
     loadGame: loadGame,
@@ -99,6 +132,10 @@ var SaveSystem = (function () {
     getSaveTimestamp: getSaveTimestamp,
     saveSetup: saveSetup,
     loadSetup: loadSetup,
-    timeAgo: timeAgo
+    timeAgo: timeAgo,
+    getOptions: getOptions,
+    setOptions: setOptions,
+    getSuitStyle: getSuitStyle,
+    setSuitStyle: setSuitStyle
   };
 })();

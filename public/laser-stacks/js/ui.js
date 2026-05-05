@@ -66,6 +66,11 @@ var UI = (function () {
     initSetupSeats();
     bindEvents();
     createFloatingSuits();
+    // Apply saved suit-style preference before any rendering happens
+    var savedStyle = SaveSystem.getSuitStyle();
+    if (Renderer && Renderer.setSuitStyle) Renderer.setSuitStyle(savedStyle);
+    applySuitStyleToDom(savedStyle);
+    syncOptionsButtons(savedStyle);
     showScreen('screen-title');
   }
 
@@ -75,6 +80,121 @@ var UI = (function () {
       setupSeats.push({
         occupied: false, animal: null, name: '', isHuman: false, isDealer: false
       });
+    }
+  }
+
+  // ---- Suit style (Options) ----
+  function applySuitStyle(style) {
+    style = (style === 'laser') ? 'laser' : 'classic';
+    SaveSystem.setSuitStyle(style);
+    if (Renderer && Renderer.setSuitStyle) Renderer.setSuitStyle(style);
+    if (Renderer && Renderer.rebuildCardTextures && canvasReady) Renderer.rebuildCardTextures();
+    applySuitStyleToDom(style);
+    syncOptionsButtons(style);
+  }
+
+  function syncOptionsButtons(style) {
+    var btns = document.querySelectorAll('#opt-suit-style .opt-choice');
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].getAttribute('data-value') === style) {
+        btns[i].classList.add('opt-choice-active');
+      } else {
+        btns[i].classList.remove('opt-choice-active');
+      }
+    }
+  }
+
+  function applySuitStyleToDom(style) {
+    document.documentElement.setAttribute('data-suit-style', style);
+    updateSuitStackLegend(style);
+    updateRulesText(style);
+  }
+
+  function updateSuitStackLegend(style) {
+    var items = document.querySelectorAll('#suit-stack .suit-stack-item');
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var suit = item.getAttribute('data-suit');
+      var canvas = item.querySelector('canvas.suit-pip-canvas');
+      if (style === 'laser' && typeof LaserPips !== 'undefined') {
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          canvas.className = 'suit-pip-canvas';
+          item.appendChild(canvas);
+        }
+        // Match container's pixel size so the pip is drawn at native resolution
+        var rect = item.getBoundingClientRect();
+        var px = Math.max(32, Math.round(rect.width || 64));
+        var py = Math.max(32, Math.round(rect.height || 64));
+        canvas.width = px;
+        canvas.height = py;
+        LaserPips.renderPipCanvas(canvas, suit);
+        item.classList.add('has-laser-pip');
+      } else {
+        item.classList.remove('has-laser-pip');
+      }
+    }
+  }
+
+  function inlineLaserPipHtml(suit) {
+    return '<canvas class="inline-laser-pip" data-inline-pip="' + suit + '" width="22" height="28"></canvas>';
+  }
+
+  function suitToken(suit, style) {
+    if (style === 'laser') return inlineLaserPipHtml(suit);
+    var sym = { clubs: '&clubs;', spades: '&spades;', hearts: '&hearts;', diamonds: '&diams;' };
+    return '<strong class="suit-' + suit + '">' + sym[suit] + '</strong>';
+  }
+
+  function suitName(suit, style, plural) {
+    if (typeof LaserPips !== 'undefined') return LaserPips.getLabel(suit, style, plural);
+    var p = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' };
+    var s = { clubs: 'Club', spades: 'Spade', hearts: 'Heart', diamonds: 'Diamond' };
+    return (plural ? p : s)[suit];
+  }
+
+  function updateRulesText(style) {
+    // Suit hierarchy line
+    var rankingP = document.querySelector('[data-rules-section="suit-ranking"]');
+    if (rankingP) {
+      rankingP.innerHTML = 'Suits are ranked: ' +
+        suitToken('clubs', style) + ' ' + suitName('clubs', style, true) + ' &gt; ' +
+        suitToken('spades', style) + ' ' + suitName('spades', style, true) + ' &gt; ' +
+        suitToken('hearts', style) + ' ' + suitName('hearts', style, true) + ' &gt; ' +
+        suitToken('diamonds', style) + ' ' + suitName('diamonds', style, true) + '.';
+    }
+
+    // Leading-a-stack line
+    var leadingP = document.querySelector('[data-rules-section="leading"]');
+    if (leadingP) {
+      var diamondLead = (style === 'laser')
+        ? inlineLaserPipHtml('diamonds') + ' <strong>Diode</strong>'
+        : '<strong class="suit-diamonds">&diams; Diamond</strong>';
+      leadingP.innerHTML = 'The leader must play a ' + diamondLead + ' if they have one.';
+    }
+
+    // Following-suit fallback line
+    var followingP = document.querySelector('[data-rules-section="following"]');
+    if (followingP) {
+      var clubsLabel = suitName('clubs', style, true);
+      var clubsVerb = (style === 'laser') ? 'are' : 'is';
+      followingP.innerHTML = 'Otherwise, play a <strong>lower-ranked</strong> suit. If you can\'t, play the next higher suit. ' +
+        clubsLabel + ' ' + clubsVerb + ' the last resort.';
+    }
+
+    // Winning-a-stack example line
+    var winningP = document.querySelector('[data-rules-section="winning"]');
+    if (winningP) {
+      winningP.innerHTML = 'a 2' + suitToken('clubs', style) + ' beats a K' + suitToken('spades', style) +
+        ', a 2' + suitToken('hearts', style) + ' beats a K' + suitToken('diamonds', style) + ', and so on.';
+    }
+
+    // Render any inline laser pip canvases that were just inserted
+    if (style === 'laser' && typeof LaserPips !== 'undefined') {
+      var inlines = document.querySelectorAll('canvas.inline-laser-pip[data-inline-pip]');
+      for (var i = 0; i < inlines.length; i++) {
+        LaserPips.renderPipCanvas(inlines[i], inlines[i].getAttribute('data-inline-pip'));
+      }
     }
   }
 
@@ -120,6 +240,26 @@ var UI = (function () {
     document.getElementById('btn-rules-back').addEventListener('click', function () {
       showScreen('screen-title');
     });
+
+    // Options screen
+    var btnOptions = document.getElementById('btn-options');
+    if (btnOptions) {
+      btnOptions.addEventListener('click', function () {
+        syncOptionsButtons(SaveSystem.getSuitStyle());
+        showScreen('screen-options');
+      });
+    }
+    var btnOptionsBack = document.getElementById('btn-options-back');
+    if (btnOptionsBack) {
+      btnOptionsBack.addEventListener('click', function () { showScreen('screen-title'); });
+    }
+    var optChoices = document.querySelectorAll('#opt-suit-style .opt-choice');
+    for (var oi = 0; oi < optChoices.length; oi++) {
+      optChoices[oi].addEventListener('click', function () {
+        var style = this.getAttribute('data-value');
+        applySuitStyle(style);
+      });
+    }
 
     // Setup controls
     document.getElementById('btn-setup-back').addEventListener('click', function () {
@@ -485,6 +625,9 @@ var UI = (function () {
     document.getElementById('suit-stack').style.display = '';
     document.getElementById('trick-info').style.display = '';
     document.getElementById('hand-bar').style.display = 'none';
+
+    // Re-render the legend now that the stack is laid out at its real size
+    updateSuitStackLegend(SaveSystem.getSuitStyle());
 
     renderGameTable().then(function () {
       positionSuitStackAndTrickInfo();

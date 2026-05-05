@@ -43,6 +43,19 @@ var Renderer = (function () {
   var SUIT_SYM = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' };
   var SUIT_COLORS = { hearts: SUIT_RED, diamonds: SUIT_RED, clubs: SUIT_BLACK, spades: SUIT_BLACK };
 
+  // ---- Suit style ('classic' Unicode pips or 'laser' canvas pips from SoloTerra) ----
+  var suitStyle = 'classic';
+  function setSuitStyle(style) {
+    suitStyle = (style === 'laser') ? 'laser' : 'classic';
+  }
+  function getSuitStyle() { return suitStyle; }
+  function getSuitColorForStyle(suit) {
+    if (suitStyle === 'laser' && typeof LaserPips !== 'undefined') {
+      return LaserPips.LASER_TEXT_COLORS[suit] || SUIT_COLORS[suit];
+    }
+    return SUIT_COLORS[suit];
+  }
+
   // ---- Pip Layouts ----
   var PIP_LAYOUTS = {
     1:  [[0.5, 0.5, false]],
@@ -148,8 +161,9 @@ var Renderer = (function () {
     Textures.drawCornerFlourish(c, CARD_W - 5, CARD_H - 5, fs, Math.PI);
     Textures.drawCornerFlourish(c, 5, CARD_H - 5, fs, Math.PI * 1.5);
 
-    var color = SUIT_COLORS[suit];
+    var color = getSuitColorForStyle(suit);
     var sym = SUIT_SYM[suit];
+    var useLaser = (suitStyle === 'laser' && typeof LaserPips !== 'undefined');
 
     // Top-left rank + suit with subtle shadow
     c.save();
@@ -161,11 +175,15 @@ var Renderer = (function () {
     // Main
     c.fillStyle = color;
     c.fillText(rank, 10, 16);
-    c.font = '10px serif';
-    c.fillStyle = 'rgba(0,0,0,0.1)';
-    c.fillText(sym, 10.5, 27.5);
-    c.fillStyle = color;
-    c.fillText(sym, 10, 27);
+    if (useLaser) {
+      LaserPips.drawPip(c, 10, 28, suit, 7, false);
+    } else {
+      c.font = '10px serif';
+      c.fillStyle = 'rgba(0,0,0,0.1)';
+      c.fillText(sym, 10.5, 27.5);
+      c.fillStyle = color;
+      c.fillText(sym, 10, 27);
+    }
     c.restore();
 
     // Bottom-right rank + suit (inverted)
@@ -178,11 +196,15 @@ var Renderer = (function () {
     c.fillText(rank, 0.5, 8.5);
     c.fillStyle = color;
     c.fillText(rank, 0, 8);
-    c.font = '10px serif';
-    c.fillStyle = 'rgba(0,0,0,0.1)';
-    c.fillText(sym, 0.5, 19.5);
-    c.fillStyle = color;
-    c.fillText(sym, 0, 19);
+    if (useLaser) {
+      LaserPips.drawPip(c, 0, 19, suit, 7, false);
+    } else {
+      c.font = '10px serif';
+      c.fillStyle = 'rgba(0,0,0,0.1)';
+      c.fillText(sym, 0.5, 19.5);
+      c.fillStyle = color;
+      c.fillText(sym, 0, 19);
+    }
     c.restore();
 
     // Center area for pips
@@ -199,31 +221,40 @@ var Renderer = (function () {
   }
 
   function renderPips(c, area, suit, count) {
-    var sym = SUIT_SYM[suit];
-    var color = SUIT_COLORS[suit];
     var layout = PIP_LAYOUTS[count];
     if (!layout) return;
 
+    if (suitStyle === 'laser' && typeof LaserPips !== 'undefined') {
+      // Laser pips draw centered & oriented at (px, py); flip rotates 180°.
+      var pipSize = count <= 3 ? 18 : 13;
+      for (var i = 0; i < layout.length; i++) {
+        var lx = area.x + layout[i][0] * area.w;
+        var ly = area.y + layout[i][1] * area.h;
+        var lflip = layout[i][2];
+        LaserPips.drawPip(c, lx, ly, suit, pipSize, lflip);
+      }
+      return;
+    }
+
+    var sym = SUIT_SYM[suit];
+    var color = SUIT_COLORS[suit];
     var fontSize = count <= 3 ? 20 : 16;
     c.save();
     c.font = fontSize + 'px serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
 
-    for (var i = 0; i < layout.length; i++) {
-      var px = area.x + layout[i][0] * area.w;
-      var py = area.y + layout[i][1] * area.h;
-      var flip = layout[i][2];
+    for (var j = 0; j < layout.length; j++) {
+      var px = area.x + layout[j][0] * area.w;
+      var py = area.y + layout[j][1] * area.h;
+      var flip = layout[j][2];
 
       c.save();
       c.translate(px, py);
       if (flip) c.rotate(Math.PI);
 
-      // Micro shadow behind pip
       c.fillStyle = 'rgba(0,0,0,0.12)';
       c.fillText(sym, 0.6, 0.8);
-
-      // Main pip with suit color
       c.fillStyle = color;
       c.fillText(sym, 0, 0);
 
@@ -234,7 +265,8 @@ var Renderer = (function () {
 
   function renderFaceCard(c, area, rank, suit) {
     var sym = SUIT_SYM[suit];
-    var color = SUIT_COLORS[suit];
+    var color = getSuitColorForStyle(suit);
+    var useLaser = (suitStyle === 'laser' && typeof LaserPips !== 'undefined');
     var cx = area.x + area.w / 2;
     var cy = area.y + area.h / 2;
 
@@ -281,16 +313,20 @@ var Renderer = (function () {
     c.fillText(rank, cx, cy - 2);
     c.restore();
 
-    // Large suit below with shadow
-    c.save();
-    c.font = '18px serif';
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.fillStyle = 'rgba(0,0,0,0.1)';
-    c.fillText(sym, cx + 0.5, cy + 14.5);
-    c.fillStyle = color;
-    c.fillText(sym, cx, cy + 14);
-    c.restore();
+    // Large suit below with shadow (or laser pip when laser style is on)
+    if (useLaser) {
+      LaserPips.drawPip(c, cx, cy + 14, suit, 14, false);
+    } else {
+      c.save();
+      c.font = '18px serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = 'rgba(0,0,0,0.1)';
+      c.fillText(sym, cx + 0.5, cy + 14.5);
+      c.fillStyle = color;
+      c.fillText(sym, cx, cy + 14);
+      c.restore();
+    }
 
     // Decorative corner accents (gold tinted)
     c.save();
@@ -628,6 +664,9 @@ var Renderer = (function () {
   function buildCardTextures() {
     var suits = ['hearts', 'diamonds', 'clubs', 'spades'];
     var ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    // Replace map (don't destroy old textures — sprites may still reference them
+    // for one more frame; let GC clean up when no longer reachable).
+    cardTextures = {};
     for (var s = 0; s < suits.length; s++) {
       for (var r = 0; r < ranks.length; r++) {
         var key = ranks[r] + '_' + suits[s];
@@ -636,6 +675,8 @@ var Renderer = (function () {
     }
     backTexture = PIXI.Texture.from(renderCardBackToImage());
   }
+
+  function rebuildCardTextures() { buildCardTextures(); }
 
   function buildShadowTexture() {
     var pad = 16;
@@ -1222,6 +1263,9 @@ var Renderer = (function () {
     getSeatOverlayPositions: getSeatOverlayPositions,
     hideDeckCount: function () { if (deckCountText) deckCountText.visible = false; },
     getCanvasSize: getCanvasSize,
+    setSuitStyle: setSuitStyle,
+    getSuitStyle: getSuitStyle,
+    rebuildCardTextures: rebuildCardTextures,
     CARD_W: CARD_W,
     CARD_H: CARD_H
   };

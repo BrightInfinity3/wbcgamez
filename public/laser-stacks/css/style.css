@@ -1525,6 +1525,65 @@ html, body {
   line-height: 1;
 }
 
+/* Laser-pip variant: hide the Unicode glyph and show a canvas instead */
+.suit-stack-item .suit-pip-canvas {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+.suit-stack-item.has-laser-pip .suit-glyph { display: none; }
+.suit-stack-item.has-laser-pip .suit-pip-canvas { display: block; }
+.suit-stack-item.has-laser-pip { -webkit-text-stroke: 0 !important; color: inherit !important; }
+.suit-stack-item.has-laser-pip.locked { opacity: 0.45; filter: grayscale(0.35); }
+.suit-stack-item.has-laser-pip.unlocked { opacity: 1; filter: none; }
+
+/* ---------- Options screen choice buttons ---------- */
+.options-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  justify-content: center;
+}
+
+.opt-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 22px;
+  min-width: 180px;
+}
+
+.opt-choice .opt-choice-label {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+}
+
+.opt-choice .opt-choice-sub {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.opt-choice.opt-choice-active {
+  background: rgba(212, 160, 23, 0.18);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+.opt-choice.opt-choice-active .opt-choice-sub { color: var(--gold-light); opacity: 0.85; }
+
+/* Inline laser pip used in How-to-Play paragraphs */
+.inline-laser-pip {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.4em;
+  vertical-align: middle;
+  margin: 0 0.05em;
+}
+
 /* ---------- Trick Info (positioned dynamically above right player by JS) ---------- */
 .trick-info {
   position: absolute;
