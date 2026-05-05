@@ -229,6 +229,10 @@
       transform: scale(1.5);
     }
 
+    .card-icon canvas.wordz-canvas {
+      transform: scale(1.4);
+    }
+
     .moregames-emoji {
       display: block;
       font-size: 54px;
@@ -330,9 +334,9 @@
     }
 
     .card.wordz {
-      --card-accent: #a855f7;
-      --card-glow: rgba(168, 85, 247, 0.12);
-      --card-icon-bg: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.1));
+      --card-accent: #3b82f6;
+      --card-glow: rgba(59, 130, 246, 0.14);
+      --card-icon-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(37, 99, 235, 0.10));
     }
 
     .card.soloterra {
@@ -444,6 +448,26 @@
         </div>
         <p class="card-desc">
           A word-guessing game. Pick your character, dodge the lasers, and decipher the word before you're zapped.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Word Game</span>
+          <span class="tag">Multiplayer</span>
+        </div>
+        <div class="card-play">
+          Play Now <span class="arrow">&rarr;</span>
+        </div>
+      </a>
+
+      <!-- WORDZ -->
+      <a href="/wordz/" class="card wordz">
+        <div class="card-header">
+          <div class="card-icon">
+            <canvas id="wordz-icon" class="wordz-canvas" width="48" height="48"></canvas>
+          </div>
+          <h2 class="card-title">Wordz</h2>
+        </div>
+        <p class="card-desc">
+          A 5-letter word-guessing game in the Lingo style. Solo against the dictionary, pass-and-play with a friend, or send async word challenges via shareable link.
         </p>
         <div class="card-tags">
           <span class="tag">Word Game</span>
@@ -781,6 +805,72 @@
       drawOne(cLeft + cW - 4.5, cTop + cH - 10);
 
       x.restore();
+    })();
+
+    // Draw Wordz icon — three letter tiles showing the game's tile states:
+    // solid (correct), ringed (present), outlined (absent).
+    (function() {
+      const c = document.getElementById('wordz-icon');
+      if (!c) return;
+      const x = c.getContext('2d');
+      const blue = '#3b82f6';
+      const blueDark = '#2563eb';
+
+      const tileW = 12;
+      const tileH = 14;
+      const tileR = 2.2;
+      const gap = 2;
+      const totalW = tileW * 3 + gap * 2;
+      const startX = (48 - totalW) / 2;
+      const tileY = (48 - tileH) / 2;
+
+      x.font = '700 9px "Comic Sans MS", "Chalkboard SE", sans-serif';
+      x.textAlign = 'center';
+      x.textBaseline = 'middle';
+
+      // Tile 1 — solid (correct): filled blue, white letter
+      const t1x = startX;
+      const grad1 = x.createLinearGradient(t1x, tileY, t1x, tileY + tileH);
+      grad1.addColorStop(0, blue);
+      grad1.addColorStop(1, blueDark);
+      x.fillStyle = grad1;
+      x.shadowColor = 'rgba(59, 130, 246, 0.55)';
+      x.shadowBlur = 4;
+      x.beginPath();
+      x.roundRect(t1x, tileY, tileW, tileH, tileR);
+      x.fill();
+      x.shadowBlur = 0;
+      x.fillStyle = '#ffffff';
+      x.fillText('W', t1x + tileW / 2, tileY + tileH / 2 + 0.5);
+
+      // Tile 2 — ringed (present): white fill with concentric blue ring
+      const t2x = startX + tileW + gap;
+      x.fillStyle = '#ffffff';
+      x.beginPath();
+      x.roundRect(t2x, tileY, tileW, tileH, tileR);
+      x.fill();
+      // Outer ring
+      x.strokeStyle = blue;
+      x.lineWidth = 1.4;
+      x.beginPath();
+      x.arc(t2x + tileW / 2, tileY + tileH / 2, tileW / 2 - 1.4, 0, Math.PI * 2);
+      x.stroke();
+      x.fillStyle = blueDark;
+      x.fillText('R', t2x + tileW / 2, tileY + tileH / 2 + 0.5);
+
+      // Tile 3 — outlined (absent / not yet guessed): just the border
+      const t3x = startX + (tileW + gap) * 2;
+      x.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      x.beginPath();
+      x.roundRect(t3x, tileY, tileW, tileH, tileR);
+      x.fill();
+      x.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+      x.lineWidth = 1.2;
+      x.beginPath();
+      x.roundRect(t3x, tileY, tileW, tileH, tileR);
+      x.stroke();
+      x.fillStyle = 'rgba(59, 130, 246, 0.85)';
+      x.fillText('D', t3x + tileW / 2, tileY + tileH / 2 + 0.5);
     })();
 
     // Draw 30 icon — three blue cards in a fan with gold "30" centered,
