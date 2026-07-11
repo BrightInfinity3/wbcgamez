@@ -10,6 +10,9 @@
    Laser Stacks scheme defaults differ deliberately: the diode is
    BLUE here (SoloTerra defaults to red) so that all four suits
    stay visually distinct in a suit-hierarchy game.
+
+   The 'animals' style (Dolphins/Hares/Spiders/Cubs) is ported
+   verbatim from Solitairra/js/renderer.js — keep in sync too.
    ============================================================ */
 
 var LaserPips = (function () {
@@ -18,11 +21,21 @@ var LaserPips = (function () {
   // Suit -> laser-name mapping used in rules text and screen labels
   var SUIT_LABELS = {
     classic: { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' },
-    laser:   { clubs: 'Combiners', spades: 'Blades', hearts: 'Prisms', diamonds: 'Diodes' }
+    laser:   { clubs: 'Combiners', spades: 'Blades', hearts: 'Prisms', diamonds: 'Diodes' },
+    animals: { clubs: 'Cubs', spades: 'Spiders', hearts: 'Hares', diamonds: 'Dolphins' }
   };
   var SUIT_LABELS_SINGULAR = {
     classic: { clubs: 'Club', spades: 'Spade', hearts: 'Heart', diamonds: 'Diamond' },
-    laser:   { clubs: 'Combiner', spades: 'Blade', hearts: 'Prism', diamonds: 'Diode' }
+    laser:   { clubs: 'Combiner', spades: 'Blade', hearts: 'Prism', diamonds: 'Diode' },
+    animals: { clubs: 'Cub', spades: 'Spider', hearts: 'Hare', diamonds: 'Dolphin' }
+  };
+
+  // Animal suit colors (single default scheme — no variants yet)
+  var ANIMAL_COLORS = {
+    diamonds: '#1565C0',  // Dolphin blue
+    hearts:   '#8B4513',  // Hare saddle brown
+    spades:   '#1a1a1a',  // Spider black
+    clubs:    '#3E2723'   // Cub dark brown
   };
 
   // Diode color schemes
@@ -176,8 +189,13 @@ var LaserPips = (function () {
     activeCombinerScheme = COMBINER_SCHEMES[scheme] ? scheme : 'black';
   }
 
-  // Card-text/DOM color for each suit in laser mode (from active schemes)
-  function getSuitColor(suit) {
+  // Card-text/DOM color for each suit. style: 'laser' (default) | 'animals'
+  function getSuitColor(suit, style) {
+    if (style === 'animals') {
+      // Rank text for Hares is pink, not the brown of the illustration itself
+      if (suit === 'hearts') return '#E91E63';
+      return ANIMAL_COLORS[suit];
+    }
     if (suit === 'diamonds') return DIODE_SCHEMES[activeDiodeScheme].color;
     if (suit === 'hearts') return PRISM_SCHEMES[activePrismScheme].color;
     if (suit === 'spades') return BLADE_SCHEMES[activeBladeScheme].color;
@@ -1194,6 +1212,426 @@ var LaserPips = (function () {
 
     c.restore();
   }
+  // ================================================================
+  //  ANIMAL PIPS (ported verbatim from Solitairra/js/renderer.js;
+  //  the dolphin is Solitairra's V11 "Iconic leaping, emoji style")
+  // ================================================================
+
+  function drawDolphinPip(c, x, y, size, flip) {
+        c.save();
+        var s = size / 20;
+        // Screen-space lift so the visual centre of the rotated dolphin sits
+        // on the (x, y) origin. Without this, the body's centre-of-mass lands
+        // ~1.8s below the origin (rows of pips and the foundation placeholder
+        // would have a too-thick top margin and a too-thin bottom margin).
+        c.translate(x, y - 1.8 * s);
+        if (flip) c.rotate(Math.PI);
+        c.rotate(-Math.PI * 0.18);
+        c.translate(-0.3 * s, 1 * s);
+
+        // Body silhouette — melon-forward leaping arc.
+        c.beginPath();
+        // Rostrum tip (front of short snout)
+        c.moveTo(8.5 * s, 0.4 * s);
+        // Upper rostrum curving up into the domed MELON (key dolphin feature)
+        c.bezierCurveTo(8.3 * s, -1 * s, 7.6 * s, -2.2 * s, 6.2 * s, -3 * s);
+        // Rounded crown of the melon — arches over the head
+        c.bezierCurveTo(4 * s, -4 * s, 1.5 * s, -4.2 * s, -0.5 * s, -3.5 * s);
+        // Along the back toward the dorsal fin base
+        c.bezierCurveTo(-1.2 * s, -3.2 * s, -1.6 * s, -3 * s, -2 * s, -2.8 * s);
+        // Classic falcate (swept-back) dorsal fin
+        c.bezierCurveTo(-1.8 * s, -5.8 * s, -2.4 * s, -6.4 * s, -3.2 * s, -5.6 * s);
+        c.bezierCurveTo(-3 * s, -4.4 * s, -3.6 * s, -3.4 * s, -4 * s, -2.6 * s);
+        // Back tapering toward the peduncle (tail base)
+        c.bezierCurveTo(-5.4 * s, -1.8 * s, -6.6 * s, -1 * s, -7 * s, -0.2 * s);
+        // Peduncle wrist
+        c.bezierCurveTo(-7.1 * s, 0.2 * s, -7 * s, 0.5 * s, -6.8 * s, 0.8 * s);
+        // --- Horizontal tail flukes: two lobes splayed outward ---
+        // Upper fluke tip (back-up)
+        c.lineTo(-9.5 * s, -0.6 * s);
+        // Fluke notch (between the two lobes)
+        c.bezierCurveTo(-8.3 * s, 0.6 * s, -7.4 * s, 1.2 * s, -6.8 * s, 1.6 * s);
+        // Lower fluke tip (back-down)
+        c.lineTo(-9.4 * s, 3.2 * s);
+        // Return along underside to belly
+        c.bezierCurveTo(-6.6 * s, 2.2 * s, -4 * s, 2 * s, -1.5 * s, 2 * s);
+        // Chin + throat curving up to rostrum
+        c.bezierCurveTo(2 * s, 2.2 * s, 5 * s, 1.8 * s, 7.5 * s, 1 * s);
+        c.bezierCurveTo(8 * s, 0.8 * s, 8.4 * s, 0.6 * s, 8.5 * s, 0.4 * s);
+        c.closePath();
+
+        // Counter-shaded light-blue body with white belly (emoji palette)
+        var g = c.createLinearGradient(0, -5 * s, 0, 3 * s);
+        g.addColorStop(0,    '#1565a8');      // medium-blue back
+        g.addColorStop(0.55, '#6aa6d5');      // flank
+        g.addColorStop(0.85, '#c8e0f2');      // upper belly
+        g.addColorStop(1,    '#ffffff');      // white belly
+        c.fillStyle = g;
+        c.fill();
+        c.strokeStyle = '#0a3265';
+        c.lineWidth = 0.5 * s;
+        c.lineJoin = 'round';
+        c.stroke();
+
+        // Visible pectoral fin (curved, hanging down-forward from chest)
+        c.save();
+        c.beginPath();
+        c.moveTo(3.4 * s, 1.3 * s);
+        c.bezierCurveTo(4.8 * s, 2.3 * s, 5.2 * s, 4 * s, 3.8 * s, 4.6 * s);
+        c.bezierCurveTo(3 * s, 3.8 * s, 2.2 * s, 2.4 * s, 2.2 * s, 1.6 * s);
+        c.bezierCurveTo(2.4 * s, 1.2 * s, 3 * s, 1.2 * s, 3.4 * s, 1.3 * s);
+        c.closePath();
+        var pg = c.createLinearGradient(2 * s, 1 * s, 5 * s, 4.5 * s);
+        pg.addColorStop(0, '#1565a8');
+        pg.addColorStop(1, '#0a3265');
+        c.fillStyle = pg;
+        c.fill();
+        c.strokeStyle = '#0a3265';
+        c.lineWidth = 0.35 * s;
+        c.stroke();
+        c.restore();
+
+        // Upturned smile — moved up to sit just under the eye.
+        c.beginPath();
+        c.moveTo(7.4 * s, -0.4 * s);
+        c.bezierCurveTo(6.4 * s, 0.3 * s, 5 * s, 0.4 * s, 3.8 * s, 0 * s);
+        c.strokeStyle = '#0a3265';
+        c.lineWidth = 0.4 * s;
+        c.lineCap = 'round';
+        c.stroke();
+
+        // Eye
+        c.beginPath();
+        c.arc(5.4 * s, -1.8 * s, 0.45 * s, 0, Math.PI * 2);
+        c.fillStyle = '#041124';
+        c.fill();
+        c.beginPath();
+        c.arc(5.58 * s, -2 * s, 0.17 * s, 0, Math.PI * 2);
+        c.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        c.fill();
+
+        c.restore();
+  }
+
+  // Hare — face only: tall ears ABOVE the head, bottoms tangent with face top, smiling.
+  function drawHarePip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+    var s = size / 20;
+    // Shift drawing so the visual centre (midpoint between ear tops and face bottom)
+    // lands on the pip's drawing origin → equal top and bottom margins on the card.
+    c.translate(0, 2.1 * s);
+    var color = ANIMAL_COLORS.hearts;
+    var light = '#c48a5a';
+    var dark = '#5a2b0d';
+
+    // Face — rx 5.082*s, ry 5.566*s.
+    var faceCy = 1 * s;
+    var faceRx = 5.082 * s;
+    var faceRy = 5.566 * s;
+    var faceTopY = faceCy - faceRy;   // ≈ -4.57*s
+
+    // Ears: 10% wider than previous (1.15 → 1.265*s), and spread further apart
+    // on the head (centres moved from ±1.5*s to ±2.1*s).
+    var earHalfW = 1.265 * s;
+    var earHalfH = 3.2 * s;
+    var earCy = faceTopY - earHalfH + 0.2 * s;   // bottoms tangent with head top
+    function drawEar(cx, tilt) {
+      c.save();
+      c.translate(cx, earCy);
+      c.rotate(tilt);
+      c.beginPath();
+      c.ellipse(0, 0, earHalfW, earHalfH, 0, 0, Math.PI * 2);
+      c.fillStyle = color;
+      c.fill();
+      c.strokeStyle = 'rgba(60, 30, 10, 0.65)';
+      c.lineWidth = 0.4 * s;
+      c.stroke();
+      // Inner ear (pink) — narrow oval pushed toward the tip
+      c.beginPath();
+      c.ellipse(0, -0.3 * s, earHalfW * 0.4, earHalfH * 0.72, 0, 0, Math.PI * 2);
+      c.fillStyle = '#e59fae';
+      c.fill();
+      c.restore();
+    }
+    drawEar(-2.1 * s, -0.18);
+    drawEar( 2.1 * s,  0.18);
+
+    // Face (opaque, covers ear roots)
+    c.save();
+    c.beginPath();
+    c.ellipse(0, faceCy, faceRx, faceRy, 0, 0, Math.PI * 2);
+    var faceGrad = c.createRadialGradient(-1.3 * s, -0.3 * s, 0.4 * s, 0, faceCy, 5.5 * s);
+    faceGrad.addColorStop(0, light);
+    faceGrad.addColorStop(0.6, color);
+    faceGrad.addColorStop(1, dark);
+    c.fillStyle = faceGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(60, 30, 10, 0.7)';
+    c.lineWidth = 0.45 * s;
+    c.stroke();
+    c.restore();
+
+    // Eyes (scaled out slightly with the face)
+    c.fillStyle = '#0a0a0a';
+    c.beginPath();
+    c.arc(-1.75 * s, 0.2 * s, 0.6 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc( 1.75 * s, 0.2 * s, 0.6 * s, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.9)';
+    c.beginPath();
+    c.arc(-1.58 * s, 0, 0.2 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc( 1.92 * s, 0, 0.2 * s, 0, Math.PI * 2);
+    c.fill();
+
+    // Muzzle patch (lighter around nose) — 25% bigger than before.
+    c.save();
+    c.beginPath();
+    c.ellipse(0, 2.6 * s, 2.3125 * s, 1.625 * s, 0, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(245, 225, 200, 0.55)';
+    c.fill();
+    c.restore();
+
+    // Nose
+    c.beginPath();
+    c.moveTo(-0.5 * s, 2.05 * s);
+    c.lineTo( 0.5 * s, 2.05 * s);
+    c.lineTo(0, 2.55 * s);
+    c.closePath();
+    c.fillStyle = '#3a1a0a';
+    c.fill();
+
+    // Smile — moved up another smidge (2.45→2.2*s).
+    c.beginPath();
+    c.arc(0, 2.2 * s, 1.6 * s, 0.08 * Math.PI, 0.92 * Math.PI);
+    c.strokeStyle = 'rgba(40, 20, 5, 0.9)';
+    c.lineWidth = 0.368 * s;
+    c.lineCap = 'round';
+    c.stroke();
+
+    // Whiskers — start at the muzzle edge (muzzle is centred at (0, 2.6*s) with
+    // rx=2.3125*s, ry=1.625*s; the ellipse intersection at these whisker y-values
+    // is ≈ ±2.25*s), then extend outward past the face.
+    c.save();
+    c.strokeStyle = 'rgba(40, 20, 5, 0.55)';
+    c.lineWidth = 0.18 * s;
+    c.lineCap = 'round';
+    var wy = [2.4 * s, 3 * s];
+    for (var wi = 0; wi < wy.length; wi++) {
+      c.beginPath();
+      c.moveTo(-2.25 * s, wy[wi]);
+      c.lineTo(-4.6 * s, wy[wi] - 0.25 * s);
+      c.moveTo( 2.25 * s, wy[wi]);
+      c.lineTo( 4.6 * s, wy[wi] - 0.25 * s);
+      c.stroke();
+    }
+    c.restore();
+
+    c.restore();
+  }
+
+  // Spider — top-down, 8 legs radiating, black
+  function drawSpiderPip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+    var s = size / 20;
+    var color = ANIMAL_COLORS.spades;
+
+    // Draw legs first (behind body). 4 per side, each with elbow bend.
+    // Coordinates as [hipX, hipY, elbowX, elbowY, footX, footY]
+    var legs = [
+      // Left side (x negative)
+      [-1.5 * s, -1.5 * s, -5 * s, -4 * s, -6.5 * s, -5.5 * s],   // front-top
+      [-1.8 * s, -0.2 * s, -5.8 * s, -1.8 * s, -7.2 * s, -0.5 * s], // upper-middle
+      [-1.8 * s,  0.8 * s, -5.8 * s,  1.2 * s, -7.2 * s,  2.5 * s], // lower-middle
+      [-1.5 * s,  2 * s,   -5 * s,   4.2 * s, -6 * s,    6 * s],    // back
+      // Right side (mirror)
+      [ 1.5 * s, -1.5 * s,  5 * s, -4 * s,   6.5 * s, -5.5 * s],
+      [ 1.8 * s, -0.2 * s,  5.8 * s, -1.8 * s,  7.2 * s, -0.5 * s],
+      [ 1.8 * s,  0.8 * s,  5.8 * s,  1.2 * s,  7.2 * s,  2.5 * s],
+      [ 1.5 * s,  2 * s,    5 * s,   4.2 * s,  6 * s,    6 * s]
+    ];
+    c.save();
+    c.strokeStyle = color;
+    c.lineWidth = 0.95 * s;
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    for (var i = 0; i < legs.length; i++) {
+      var L = legs[i];
+      c.beginPath();
+      c.moveTo(L[0], L[1]);
+      c.lineTo(L[2], L[3]);
+      c.lineTo(L[4], L[5]);
+      c.stroke();
+    }
+    c.restore();
+
+    // Abdomen (larger, lower)
+    c.save();
+    c.beginPath();
+    c.ellipse(0, 2.2 * s, 3 * s, 3.6 * s, 0, 0, Math.PI * 2);
+    var abGrad = c.createRadialGradient(-0.8 * s, 1 * s, 0.3 * s, 0, 2.2 * s, 4 * s);
+    abGrad.addColorStop(0, '#4a4a4a');
+    abGrad.addColorStop(0.6, '#1a1a1a');
+    abGrad.addColorStop(1, '#000000');
+    c.fillStyle = abGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.85)';
+    c.lineWidth = 0.4 * s;
+    c.stroke();
+    c.restore();
+
+    // Cephalothorax (head/front)
+    c.save();
+    c.beginPath();
+    c.ellipse(0, -1.8 * s, 2.2 * s, 2 * s, 0, 0, Math.PI * 2);
+    var cephGrad = c.createRadialGradient(-0.6 * s, -2.5 * s, 0.2 * s, 0, -1.8 * s, 2.5 * s);
+    cephGrad.addColorStop(0, '#505050');
+    cephGrad.addColorStop(0.7, '#1a1a1a');
+    cephGrad.addColorStop(1, '#000000');
+    c.fillStyle = cephGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.85)';
+    c.lineWidth = 0.4 * s;
+    c.stroke();
+    c.restore();
+
+    // Eyes — 4 small red/white dots on cephalothorax
+    c.fillStyle = '#ffeb3b';
+    c.beginPath();
+    c.arc(-0.9 * s, -2.5 * s, 0.28 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc(0.9 * s, -2.5 * s, 0.28 * s, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(-0.3 * s, -2.1 * s, 0.22 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc(0.3 * s, -2.1 * s, 0.22 * s, 0, Math.PI * 2);
+    c.fill();
+
+    c.restore();
+  }
+
+  // Bear Cub — face only. Ears sit at the upper-side head corners and are hidden
+  // behind a fully-opaque head; only the outer portion of each ear pokes out
+  // (classic teddy-bear silhouette). Smiling.
+  function drawCubPip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+    var s = size / 20;
+    var color = ANIMAL_COLORS.clubs;
+    var light = '#6d4c3a';
+    var dark = '#1b0f08';
+
+    var headCy = 0.6 * s;
+    var headR = 5 * s;
+    var earR = 2.1 * s;
+
+    // Ears drawn first at the head's upper-side corners (x = ±3.8*s, y = -3.5*s).
+    // Because the head is drawn opaque on top, only the outer crescent of each
+    // ear is visible — like a teddy bear.
+    function drawEar(cx) {
+      c.save();
+      c.beginPath();
+      c.arc(cx, -3.5 * s, earR, 0, Math.PI * 2);
+      c.fillStyle = color;
+      c.fill();
+      c.strokeStyle = 'rgba(20, 10, 5, 0.7)';
+      c.lineWidth = 0.4 * s;
+      c.stroke();
+      // Inner ear — a smaller lighter circle toward the center of the face
+      c.beginPath();
+      c.arc(cx * 0.72, -3.2 * s, 0.95 * s, 0, Math.PI * 2);
+      c.fillStyle = '#b08870';
+      c.fill();
+      c.restore();
+    }
+    drawEar(-3.8 * s);
+    drawEar( 3.8 * s);
+
+    // Head — fully opaque, hides inner halves of the ears
+    c.save();
+    c.beginPath();
+    c.arc(0, headCy, headR, 0, Math.PI * 2);
+    var headGrad = c.createRadialGradient(-1.4 * s, -0.6 * s, 0.4 * s, 0, headCy, 6 * s);
+    headGrad.addColorStop(0, light);
+    headGrad.addColorStop(0.6, color);
+    headGrad.addColorStop(1, dark);
+    c.fillStyle = headGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(20, 10, 5, 0.7)';
+    c.lineWidth = 0.45 * s;
+    c.stroke();
+    c.restore();
+
+    // Muzzle (lighter patch on lower half of face)
+    c.save();
+    c.beginPath();
+    c.ellipse(0, 2.2 * s, 2.6 * s, 1.9 * s, 0, 0, Math.PI * 2);
+    c.fillStyle = '#d8b593';
+    c.fill();
+    c.strokeStyle = 'rgba(20, 10, 5, 0.35)';
+    c.lineWidth = 0.3 * s;
+    c.stroke();
+    c.restore();
+
+    // Nose
+    c.save();
+    c.beginPath();
+    c.ellipse(0, 1.4 * s, 0.9 * s, 0.65 * s, 0, 0, Math.PI * 2);
+    c.fillStyle = '#0a0a0a';
+    c.fill();
+    c.beginPath();
+    c.arc(-0.25 * s, 1.2 * s, 0.18 * s, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(255,255,255,0.5)';
+    c.fill();
+    c.restore();
+
+    // Smile
+    c.beginPath();
+    c.arc(0, 2.3 * s, 1.3 * s, 0.1 * Math.PI, 0.9 * Math.PI);
+    c.strokeStyle = 'rgba(20, 10, 5, 0.9)';
+    c.lineWidth = 0.3 * s;
+    c.lineCap = 'round';
+    c.stroke();
+
+    // Eyes
+    c.fillStyle = '#0a0a0a';
+    c.beginPath();
+    c.arc(-1.8 * s, -0.4 * s, 0.55 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc( 1.8 * s, -0.4 * s, 0.55 * s, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.85)';
+    c.beginPath();
+    c.arc(-1.65 * s, -0.6 * s, 0.2 * s, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    c.arc( 1.95 * s, -0.6 * s, 0.2 * s, 0, Math.PI * 2);
+    c.fill();
+
+    c.restore();
+  }
+
+  // Dispatch animal pip drawing by suit
+  function drawAnimalPip(c, x, y, size, suit, flip) {
+    if (suit === 'diamonds') drawDolphinPip(c, x, y, size, flip);
+    else if (suit === 'hearts') drawHarePip(c, x, y, size, flip);
+    else if (suit === 'spades') drawSpiderPip(c, x, y, size, flip);
+    else if (suit === 'clubs') drawCubPip(c, x, y, size, flip);
+  }
+
   // ---- Pip Layouts ----
   // [relativeX, relativeY, isFlipped]
   // 3 = triangle: 1 top center, 2 bottom row
@@ -1356,31 +1794,55 @@ var LaserPips = (function () {
     return layout;
   }
 
-  // Pip size for laser suits (SoloTerra's renderPips sizing rules)
-  function getCustomPipSize(suit, count) {
+  // Pip size for the drawn suits. Laser sizes are SoloTerra's; animal
+  // sizes carry Solitairra's +10% baseline and per-suit boosts.
+  function getCustomPipSize(suit, count, style) {
     var customSize = 16;
+    if (style === 'animals') {
+      customSize = 16 * 1.10; // animals baseline boost
+      if (suit === 'hearts') customSize *= 1.25;
+      else if (suit === 'diamonds') customSize *= 1.10;
+      else if (suit === 'spades') customSize *= 1.10;
+      else if (suit === 'clubs') customSize *= 1.25 * 1.10 * 1.10;
+      return customSize;
+    }
     if (count === 1) customSize = 32;
     else if (suit === 'hearts' && count > 2) customSize = 15.2; // prisms 5% smaller for 3+
     return customSize;
   }
 
-  // Suit-aware dispatcher for the four laser pips
-  function drawPip(c, x, y, suit, size, flip) {
+  // Face-card center pip size (below the big rank letter). Laser keeps
+  // SoloTerra's 14; animals use Solitairra's boosted table.
+  function getFaceCardPipSize(suit, style) {
+    if (style === 'animals') {
+      if (suit === 'hearts') return 16 * 1.10 * 1.25;
+      if (suit === 'clubs') return 16 * 1.10 * 1.25 * 1.10 * 1.10;
+      return 16 * 1.10 * 1.10; // dolphins & spiders
+    }
+    return 14;
+  }
+
+  // Suit-aware dispatcher. style: 'laser' (default) | 'animals'
+  function drawPip(c, x, y, suit, size, flip, style) {
+    if (style === 'animals') {
+      drawAnimalPip(c, x, y, size, suit, flip);
+      return;
+    }
     if (suit === 'diamonds')      drawDiodePip(c, x, y, size, flip);
     else if (suit === 'hearts')   drawPrismPip(c, x, y, size, flip, false);
     else if (suit === 'spades')   drawBladeAny(c, x, y, size, flip);
     else if (suit === 'clubs')    drawCombinerPip(c, x, y, size, flip, false);
   }
 
-  // Render a laser pip onto an HTML <canvas> element of any size, useful for
+  // Render a drawn pip onto an HTML <canvas> element of any size, useful for
   // legend chips and inline rule badges. Sizes pip ~70% of canvas extent.
-  function renderPipCanvas(canvas, suit) {
+  function renderPipCanvas(canvas, suit, style) {
     var w = canvas.width;
     var h = canvas.height;
     var c = canvas.getContext('2d');
     c.clearRect(0, 0, w, h);
     var size = Math.min(w, h) * 0.7;
-    drawPip(c, w / 2, h / 2, suit, size, false);
+    drawPip(c, w / 2, h / 2, suit, size, false, style);
   }
 
   function getLabel(suit, style, plural) {
@@ -1396,10 +1858,16 @@ var LaserPips = (function () {
     drawFanPip: drawFanPip,
     drawBladeAny: drawBladeAny,
     drawCombinerPip: drawCombinerPip,
+    drawDolphinPip: drawDolphinPip,
+    drawHarePip: drawHarePip,
+    drawSpiderPip: drawSpiderPip,
+    drawCubPip: drawCubPip,
+    drawAnimalPip: drawAnimalPip,
     drawPip: drawPip,
     renderPipCanvas: renderPipCanvas,
     getLayout: getLayout,
     getCustomPipSize: getCustomPipSize,
+    getFaceCardPipSize: getFaceCardPipSize,
     getSuitColor: getSuitColor,
     setDiodeScheme: setDiodeScheme,
     setPrismScheme: setPrismScheme,

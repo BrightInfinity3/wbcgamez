@@ -43,19 +43,21 @@ var Renderer = (function () {
   var SUIT_SYM = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' };
   var SUIT_COLORS = { hearts: SUIT_RED, diamonds: SUIT_RED, clubs: SUIT_BLACK, spades: SUIT_BLACK };
 
-  // ---- Suit style ('classic' Unicode pips or 'laser' canvas pips from SoloTerra) ----
-  var suitStyle = 'classic';
+  // ---- Suit style: 'classic' Unicode pips, 'laser' (SoloTerra art),
+  //      or 'animals' (Solitairra art) ----
+  var suitStyle = 'laser';
   function setSuitStyle(style) {
-    suitStyle = (style === 'laser') ? 'laser' : 'classic';
+    suitStyle = (style === 'classic' || style === 'animals') ? style : 'laser';
   }
   function getSuitStyle() { return suitStyle; }
-  // In laser mode every suit is "custom" (SoloTerra has per-suit skins;
-  // Laser Stacks collapses that to the single Options toggle)
+  // In laser/animals mode every suit is "custom" (drawn pip art; the
+  // solitaire games have per-suit skins — Laser Stacks collapses that
+  // to the single Options toggle)
   function isCustomSuit(suit) {
-    return suitStyle === 'laser';
+    return suitStyle !== 'classic';
   }
   function getSuitColor(suit) {
-    if (isCustomSuit(suit)) return LaserPips.getSuitColor(suit);
+    if (isCustomSuit(suit)) return LaserPips.getSuitColor(suit, suitStyle);
     return SUIT_COLORS[suit];
   }
 
@@ -216,7 +218,7 @@ var Renderer = (function () {
     if (!layout) return;
 
     var fontSize = 20; // uniform 20px for classic pips (all ranks)
-    var customSize = LaserPips.getCustomPipSize(suit, count);
+    var customSize = LaserPips.getCustomPipSize(suit, count, suitStyle);
 
     c.save();
     if (!isCustom) {
@@ -230,7 +232,7 @@ var Renderer = (function () {
       var py = area.y + layout[i][1] * area.h;
 
       if (isCustom) {
-        LaserPips.drawPip(c, px, py, suit, customSize, false);
+        LaserPips.drawPip(c, px, py, suit, customSize, false, suitStyle);
       } else {
         c.save();
         c.translate(px, py);
@@ -300,7 +302,7 @@ var Renderer = (function () {
     // Suit symbol below rank on face cards
     var suitPipY = rankCenterY + 24;
     if (isCustomSuit(suit)) {
-      LaserPips.drawPip(c, cx, suitPipY, suit, 14, false);
+      LaserPips.drawPip(c, cx, suitPipY, suit, LaserPips.getFaceCardPipSize(suit, suitStyle), false, suitStyle);
     } else {
       c.save();
       c.font = '18px serif';
