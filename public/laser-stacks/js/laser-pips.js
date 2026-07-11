@@ -1,7 +1,15 @@
 /* ============================================================
-   Laser Stacks - Laser Pip Drawing
-   Canvas2D drawing of laser-themed suit pips, ported from
-   SoloTerra's renderer (Diodes, Prisms, Blades, Combiners).
+   Laser Stacks - Laser Suit Art
+   Canvas2D pip drawers (Diodes, Prisms, Blades, Combiners),
+   color schemes, and pip layout tables.
+
+   PORTED FROM soloterra/js/renderer.js — the drawers, schemes,
+   and layout tables are verbatim copies; keep them in sync when
+   SoloTerra's card art evolves.
+
+   Laser Stacks scheme defaults differ deliberately: the diode is
+   BLUE here (SoloTerra defaults to red) so that all four suits
+   stay visually distinct in a suit-hierarchy game.
    ============================================================ */
 
 var LaserPips = (function () {
@@ -17,57 +25,181 @@ var LaserPips = (function () {
     laser:   { clubs: 'Combiner', spades: 'Blade', hearts: 'Prism', diamonds: 'Diode' }
   };
 
-  // Approximate laser-mode card text colors (kept close to classic suit colors so
-  // the rank corners read clearly against the cream card background).
-  var LASER_TEXT_COLORS = {
-    diamonds: '#1565C0', // Diode - blue
-    hearts:   '#c62828', // Prism - red
-    spades:   '#1a1a1a', // Blade - dark
-    clubs:    '#1a1a1a'  // Combiner - dark
+  // Diode color schemes
+  var DIODE_SCHEMES = {
+    red: {
+      color: '#b71c1c',
+      glow: ['rgba(255, 100, 100, 0.35)', 'rgba(255, 60, 60, 0.12)', 'rgba(255, 40, 40, 0)'],
+      body: ['#ffa0a0', '#ff4a4a', '#b71c1c', '#7f0000'],
+      outline: 'rgba(127, 0, 0, 0.6)',
+      highlight: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 180, 180, 0.3)', 'rgba(255, 100, 100, 0)']
+    },
+    blue: {
+      color: '#1565C0',
+      glow: ['rgba(100, 180, 255, 0.35)', 'rgba(60, 140, 255, 0.12)', 'rgba(40, 120, 255, 0)'],
+      body: ['#a0d4ff', '#4a9eff', '#1565C0', '#0d47a1'],
+      outline: 'rgba(13, 71, 161, 0.6)',
+      highlight: ['rgba(255, 255, 255, 0.7)', 'rgba(180, 220, 255, 0.3)', 'rgba(100, 180, 255, 0)']
+    },
+    orange: {
+      color: '#e65100',
+      glow: ['rgba(255, 160, 50, 0.35)', 'rgba(255, 130, 30, 0.12)', 'rgba(255, 110, 10, 0)'],
+      body: ['#ffcc80', '#ff9800', '#e65100', '#bf360c'],
+      outline: 'rgba(191, 54, 12, 0.6)',
+      highlight: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 220, 180, 0.3)', 'rgba(255, 160, 80, 0)']
+    },
+    green: {
+      color: '#2E7D32',
+      glow: ['rgba(100, 220, 100, 0.35)', 'rgba(60, 180, 60, 0.12)', 'rgba(40, 160, 40, 0)'],
+      body: ['#a5d6a7', '#66bb6a', '#2E7D32', '#1B5E20'],
+      outline: 'rgba(27, 94, 32, 0.6)',
+      highlight: ['rgba(255, 255, 255, 0.7)', 'rgba(180, 255, 180, 0.3)', 'rgba(100, 220, 100, 0)']
+    }
   };
 
-  // ---- Diode (red) ----
-  var DIODE = {
-    glow:      ['rgba(255, 100, 100, 0.35)', 'rgba(255, 60, 60, 0.12)', 'rgba(255, 40, 40, 0)'],
-    body:      ['#ffa0a0', '#ff4a4a', '#b71c1c', '#7f0000'],
-    outline:   'rgba(127, 0, 0, 0.6)',
-    highlight: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 180, 180, 0.3)', 'rgba(255, 100, 100, 0)']
+  // Prism color schemes
+  var PRISM_SCHEMES = {
+    red: {
+      color: '#c62828',
+      beamColors: ['#8B0000', '#c62828', '#ff6666'],  // dark red, red, light red
+      beamLabel: 'Red'
+    },
+    blue: {
+      color: '#1565C0',
+      beamColors: ['#0D47A1', '#1565C0', '#64B5F6'],  // dark blue, blue, light blue
+      beamLabel: 'Blue'
+    },
+    warm: {
+      color: '#ff6d00',
+      beamColors: ['#c62828', '#ff6d00', '#f9a825'],
+      beamLabel: 'Warm'
+    },
+    cool: {
+      color: '#4527A0',
+      beamColors: ['#1565C0', '#4527A0', '#7B1FA2'],
+      beamLabel: 'Cool'
+    },
+    hybrid: {
+      color: '#1B5E20',
+      beamColors: ['#c62828', '#1B6B1B', '#1565C0'],
+      beamLabel: 'Hybrid'
+    }
   };
 
-  // ---- Prism (red beam scheme, like SoloTerra default) ----
-  var PRISM = {
-    beamColors: ['#8B0000', '#c62828', '#ff6666']
+  // Blade color schemes
+  var BLADE_SCHEMES = {
+    black: {
+      color: '#1a1a1a',
+      hasGlow: false,
+      glowColor: null
+    },
+    red: {
+      color: '#8B0000',
+      hasGlow: true,
+      glowColor: [255, 50, 50]
+    },
+    blue: {
+      color: '#1565C0',
+      hasGlow: true,
+      glowColor: [50, 100, 255]
+    }
   };
 
-  // ---- Blade (black, no glow) ----
-  var BLADE = {
-    hasGlow:   false,
-    glowColor: null
+  // Combiner color schemes
+  var COMBINER_SCHEMES = {
+    black: {
+      color: '#1a1a1a',
+      beamColors: ['#1a1a1a', '#1a1a1a'],
+      outputColor: '#ffffff',
+      outputBorder: '#1a1a1a',
+      beamLabel: 'Black'
+    },
+    red: {
+      color: '#c62828',
+      beamColors: ['#c62828', '#c62828'],
+      outputColor: '#c62828',
+      beamLabel: 'Red'
+    },
+    blue: {
+      color: '#1565C0',
+      beamColors: ['#1565C0', '#1565C0'],
+      outputColor: '#1565C0',
+      beamLabel: 'Blue'
+    },
+    warm: {
+      color: '#ff6d00',
+      beamColors: ['#c62828', '#f9a825'],
+      outputColor: '#ff6d00',
+      beamLabel: 'Warm'
+    },
+    cool: {
+      color: '#4527A0',
+      beamColors: ['#1565C0', '#7B1FA2'],
+      outputColor: '#4527A0',
+      beamLabel: 'Cool'
+    },
+    hybrid: {
+      color: '#1a1a1a',
+      beamColors: ['#c62828', '#1565C0'],
+      outputColor: '#ffffff',
+      outputBorder: null,
+      hybridOutput: true,
+      beamLabel: 'Hybrid'
+    }
   };
 
-  // ---- Combiner (black scheme) ----
-  var COMBINER = {
-    beamColors:   ['#1a1a1a', '#1a1a1a'],
-    outputColor:  '#ffffff',
-    outputBorder: '#1a1a1a',
-    hybridOutput: false
-  };
 
-  // ---- Diode pip ----
+  // Active scheme selections (Laser Stacks defaults; see header note)
+  var activeDiodeScheme = 'blue';
+  var activePrismScheme = 'red';
+  var activeBladeScheme = 'black';
+  var activeCombinerScheme = 'black';
+  var activeBladeStyle = 'fan'; // 'blade' (sword), 'sai', or 'fan'
+
+  function setDiodeScheme(scheme) {
+    activeDiodeScheme = DIODE_SCHEMES[scheme] ? scheme : 'blue';
+  }
+
+  function setPrismScheme(scheme) {
+    activePrismScheme = PRISM_SCHEMES[scheme] ? scheme : 'red';
+  }
+
+  function setBladeScheme(scheme) {
+    activeBladeScheme = BLADE_SCHEMES[scheme] ? scheme : 'black';
+  }
+
+  function setBladeStyle(style) {
+    activeBladeStyle = (style === 'sai' || style === 'fan') ? style : 'blade';
+  }
+
+  function setCombinerScheme(scheme) {
+    activeCombinerScheme = COMBINER_SCHEMES[scheme] ? scheme : 'black';
+  }
+
+  // Card-text/DOM color for each suit in laser mode (from active schemes)
+  function getSuitColor(suit) {
+    if (suit === 'diamonds') return DIODE_SCHEMES[activeDiodeScheme].color;
+    if (suit === 'hearts') return PRISM_SCHEMES[activePrismScheme].color;
+    if (suit === 'spades') return BLADE_SCHEMES[activeBladeScheme].color;
+    return COMBINER_SCHEMES[activeCombinerScheme].color;
+  }
+
+  // ---- Diode (LED) pip drawing ----
   function drawDiodePip(c, x, y, size, flip) {
-    var scheme = DIODE;
+    var scheme = DIODE_SCHEMES[activeDiodeScheme];
     c.save();
     c.translate(x, y);
     if (flip) c.rotate(Math.PI);
 
-    var s = size / 20;
+    var s = size / 20; // normalize to base size of 20
 
+    // LED body (dome/capsule)
     var bodyW = 6.84 * s;
     var bodyH = 11 * s;
     var domeR = bodyW;
     var rawBodyTop = -bodyH * 0.35;
     var rawBodyBot = bodyH * 0.35;
-    var rawLegBot = rawBodyBot + 1.5 * s + 4 * s + 1 * s;
+    var rawLegBot = rawBodyBot + 1.5 * s + 4 * s + 1 * s; // legTop + legLen + extra
     var rawDomeTop = rawBodyTop - domeR;
     var centerOffset = (rawDomeTop + rawLegBot) / 2;
     c.translate(0, -centerOffset);
@@ -84,11 +216,11 @@ var LaserPips = (function () {
     c.arc(0, bodyTop, domeR * 1.5, 0, Math.PI * 2);
     c.fill();
 
-    // Glass dome
+    // Glass dome (top rounded part)
     c.beginPath();
-    c.arc(0, bodyTop, domeR, Math.PI, 0);
-    c.lineTo(bodyW, bodyBot);
-    c.lineTo(-bodyW, bodyBot);
+    c.arc(0, bodyTop, domeR, Math.PI, 0); // top semicircle
+    c.lineTo(bodyW, bodyBot); // right side
+    c.lineTo(-bodyW, bodyBot); // bottom to left
     c.closePath();
 
     var bodyGrad = c.createLinearGradient(-bodyW, bodyTop - domeR, bodyW, bodyBot);
@@ -99,11 +231,12 @@ var LaserPips = (function () {
     c.fillStyle = bodyGrad;
     c.fill();
 
+    // Outline
     c.strokeStyle = scheme.outline;
     c.lineWidth = 0.6 * s;
     c.stroke();
 
-    // Inner highlight
+    // Inner highlight (bright spot)
     var hlGrad = c.createRadialGradient(-1 * s, bodyTop - 2 * s, 0.5 * s, 0, bodyTop, domeR * 0.7);
     hlGrad.addColorStop(0, scheme.highlight[0]);
     hlGrad.addColorStop(0.3, scheme.highlight[1]);
@@ -116,26 +249,28 @@ var LaserPips = (function () {
     c.closePath();
     c.fill();
 
-    // Base/rim
+    // Base/rim at bottom of LED body
     c.fillStyle = '#546E7A';
     c.fillRect(-bodyW * 0.9, bodyBot - 1 * s, bodyW * 1.8, 2.5 * s);
     c.strokeStyle = 'rgba(0,0,0,0.2)';
     c.lineWidth = 0.3 * s;
     c.strokeRect(-bodyW * 0.9, bodyBot - 1 * s, bodyW * 1.8, 2.5 * s);
 
-    // Legs
+    // Wire leads (two legs)
     var legTop = bodyBot + 1.5 * s;
     var legLen = 4 * s;
     c.strokeStyle = '#78909C';
     c.lineWidth = 0.8 * s;
     c.lineCap = 'round';
 
+    // Left leg (shorter, with bend)
     c.beginPath();
     c.moveTo(-2.5 * s, legTop);
     c.lineTo(-2.5 * s, legTop + legLen * 0.6);
     c.lineTo(-3.5 * s, legTop + legLen);
     c.stroke();
 
+    // Right leg (longer)
     c.beginPath();
     c.moveTo(2.5 * s, legTop);
     c.lineTo(2.5 * s, legTop + legLen);
@@ -144,8 +279,7 @@ var LaserPips = (function () {
 
     c.restore();
   }
-
-  // ---- Prism pip ----
+  // ---- Prism (replaces Hearts) pip drawing ----
   function drawPrismPip(c, x, y, size, flip, dimGlow) {
     c.save();
     c.translate(x, y);
@@ -153,24 +287,36 @@ var LaserPips = (function () {
 
     var s = size / 20;
 
-    var pw = 6.84 * s;
-    var ph = 13.68 * s;
+    // Prism triangle (equilateral, reduced 10%)
+    var pw = 6.84 * s;     // half-width at base
+    var ph = 13.68 * s;    // height
     var topY = -ph * 0.42;
     var botY = ph * 0.42;
 
+    // Offset prism slightly up-left so beams feel centered
     var prismOX = -0.5 * s;
     var prismOY = -0.5 * s;
 
+    // Beam parameters (reduced 20% from original 1.6)
     var beamW = 1.28 * s;
 
+    // Convergence point (center of prism)
     var convX = prismOX;
     var convY = prismOY + botY * 0.15;
 
-    var inColors = PRISM.beamColors;
+    // Beam colors from active scheme
+    var pScheme = PRISM_SCHEMES[activePrismScheme];
+    var inColors = pScheme.beamColors;
+    // Beam widths: uniform for all 3 incoming beams and single outgoing beam
     var beamWidths = [beamW, beamW, beamW];
+    // Broad outgoing beam keeps original bolder widths for its colored borders
+    var hybridBorderWidths = [beamW * 1.4, beamW * 1.4, beamW * 1.3];
 
+    // Outgoing beam Y positions (red=-beamW, green=0, blue=+beamW)
+    // Red top edge at convY - beamW - beamW/2 = convY - 1.5*beamW
     var outYs = [convY - beamW, convY, convY + beamW];
 
+    // Incoming beams start X and end at convergence (clipped 5%: 2.5% each side, then rays shortened 10%)
     var totalBeamW = pw * 3;
     var clipAmount = totalBeamW * 0.025;
     var fullInStartX = prismOX - pw * 1.5 + clipAmount;
@@ -178,12 +324,18 @@ var LaserPips = (function () {
     var inRayLen = convX - fullInStartX;
     var outRayLen = fullOutEndX - convX;
     var inStartX = fullInStartX + inRayLen * 0.1;
-    var outEndX = fullOutEndX + outRayLen * 0.08;
+    var outEndX = fullOutEndX + outRayLen * 0.08; // extended 20% beyond original
 
-    var inSpread = 2.1 * s;
+    // Incoming beam spread — shallower angle
+    // Red arrives so its top edge aligns with outgoing red top edge
+    // Red outgoing center = convY - beamW, top = convY - beamW - beamW/2
+    // So incoming red should arrive at convY - beamW (same center as outgoing)
+    var inSpread = 2.1 * s; // spread between beams at left edge (steeper angle of incidence)
     var inYs = [convY - inSpread * 2.5, convY, convY + inSpread * 2.5];
 
-    // Drop shadow
+    // --- Draw order: shadow, prism body, beams ON TOP of prism, then white glow on top ---
+
+    // Drop shadow behind prism
     c.save();
     c.beginPath();
     c.moveTo(prismOX + 1.5 * s, topY + prismOY + 2 * s);
@@ -194,13 +346,14 @@ var LaserPips = (function () {
     c.fill();
     c.restore();
 
-    // Prism body
+    // Prism body (triangle)
     c.beginPath();
     c.moveTo(prismOX, topY + prismOY);
     c.lineTo(pw + prismOX, botY + prismOY);
     c.lineTo(-pw + prismOX, botY + prismOY);
     c.closePath();
 
+    // Glass fill
     var glassGrad = c.createLinearGradient(-pw + prismOX, topY + prismOY, pw + prismOX, botY + prismOY);
     glassGrad.addColorStop(0, 'rgba(210, 230, 250, 0.8)');
     glassGrad.addColorStop(0.25, 'rgba(185, 210, 240, 0.65)');
@@ -210,6 +363,7 @@ var LaserPips = (function () {
     c.fillStyle = glassGrad;
     c.fill();
 
+    // Prism outline
     c.strokeStyle = 'rgba(40, 70, 110, 0.6)';
     c.lineWidth = 0.8 * s;
     c.lineJoin = 'round';
@@ -235,7 +389,10 @@ var LaserPips = (function () {
     c.fillStyle = 'rgba(30, 60, 100, 0.08)';
     c.fill();
 
-    // Incoming beams
+    // --- Beams drawn ON TOP of prism body ---
+
+    // Incoming beams (left — R, G, B converging into prism center, shallower angle)
+    // For placeholder (dimGlow), extend each beam until it touches the opaque core circle
     var coreR = 2.4 * s;
     c.save();
     c.globalAlpha = 0.85;
@@ -243,6 +400,9 @@ var LaserPips = (function () {
       var beamEndX = convX;
       var beamEndY = outYs[bi];
       if (dimGlow) {
+        // Find where the beam line intersects the core circle centered at (convX, convY)
+        // Beam goes from (inStartX, inYs[bi]) toward (convX, outYs[bi])
+        // Parameterize: P(t) = start + t*(end-start), find t where |P(t) - center|^2 = coreR^2
         var dx = beamEndX - inStartX;
         var dy = beamEndY - inYs[bi];
         var fx = inStartX - convX;
@@ -267,20 +427,49 @@ var LaserPips = (function () {
     }
     c.restore();
 
-    // Outgoing beam (single, middle color for non-hybrid scheme)
+    // Outgoing beam(s) on right side
+    // For placeholder (dimGlow), start outgoing beams at edge of opaque core circle
     var outStartX = dimGlow ? convX + coreR : convX;
     c.save();
     c.globalAlpha = 0.85;
-    c.beginPath();
-    c.moveTo(outStartX, convY);
-    c.lineTo(outEndX, convY);
-    c.strokeStyle = inColors[1];
-    c.lineWidth = beamWidths[1];
-    c.lineCap = 'butt';
-    c.stroke();
+    if (activePrismScheme === 'hybrid') {
+      // Hybrid: wide merged white beam with colored borders (uses original bolder widths)
+      var outTopY = outYs[0] - hybridBorderWidths[0] / 2;
+      var outBotY = outYs[2] + hybridBorderWidths[2] / 2;
+      var halfRedW = hybridBorderWidths[0] / 2;
+      var halfBlueW = hybridBorderWidths[2] / 2;
+      c.beginPath();
+      c.rect(outStartX, outTopY, outEndX - outStartX, outBotY - outTopY);
+      c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.4)' : '#ffffff';
+      c.fill();
+      c.beginPath();
+      c.moveTo(outStartX, outTopY + halfRedW / 2);
+      c.lineTo(outEndX, outTopY + halfRedW / 2);
+      c.strokeStyle = inColors[0];
+      c.lineWidth = halfRedW;
+      c.lineCap = 'butt';
+      c.stroke();
+      c.beginPath();
+      c.moveTo(outStartX, outBotY - halfBlueW / 2);
+      c.lineTo(outEndX, outBotY - halfBlueW / 2);
+      c.strokeStyle = inColors[2];
+      c.lineWidth = halfBlueW;
+      c.lineCap = 'butt';
+      c.stroke();
+    } else {
+      // Warm/Cool: single output beam matching the middle input beam
+      c.beginPath();
+      c.moveTo(outStartX, convY);
+      c.lineTo(outEndX, convY);
+      c.strokeStyle = inColors[1]; // middle beam color (orange for warm, indigo for cool)
+      c.lineWidth = beamWidths[1];
+      c.lineCap = 'butt';
+      c.stroke();
+    }
     c.restore();
 
-    // White glow at convergence
+    // --- White glow on top of everything (obscures beam merge) ---
+    // Larger, brighter glow for placeholder (dimGlow) to fully hide beam ends
     var glowR = dimGlow ? 10 * s : 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
     if (dimGlow) {
@@ -303,6 +492,7 @@ var LaserPips = (function () {
     c.arc(convX, convY, glowR, 0, Math.PI * 2);
     c.fill();
 
+    // Small solid white core for placeholder to fully hide beam ends at convergence
     if (dimGlow) {
       c.save();
       c.globalAlpha = 1.0;
@@ -313,7 +503,7 @@ var LaserPips = (function () {
       c.restore();
     }
 
-    // Apex highlight
+    // Apex highlight (bright point at top)
     var apexGlow = c.createRadialGradient(prismOX, topY + prismOY + 2 * s, 0, prismOX, topY + prismOY + 2 * s, 3 * s);
     apexGlow.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
     apexGlow.addColorStop(0.5, 'rgba(220, 240, 255, 0.15)');
@@ -323,7 +513,7 @@ var LaserPips = (function () {
     c.arc(prismOX, topY + prismOY + 2 * s, 3 * s, 0, Math.PI * 2);
     c.fill();
 
-    // Bottom edge highlight line
+    // Bottom edge subtle highlight line
     c.beginPath();
     c.moveTo(-pw + prismOX + 2 * s, botY + prismOY - 0.5 * s);
     c.lineTo(pw + prismOX - 2 * s, botY + prismOY - 0.5 * s);
@@ -334,8 +524,7 @@ var LaserPips = (function () {
 
     c.restore();
   }
-
-  // ---- Blade pip ----
+  // ---- Blade (replaces Spades) pip drawing ----
   function drawBladePip(c, x, y, size, flip) {
     c.save();
     c.translate(x, y);
@@ -343,30 +532,37 @@ var LaserPips = (function () {
 
     var s = size / 20;
 
-    var bladeHW = 2.14 * s;
-    var bladeLen = 16 * s;
-    var tipLen = 4 * s;
-    var guardHW = 4.28 * s;
-    var guardH = 1.8 * s;
-    var gripHW = 1.37 * s;
-    var gripLen = 7 * s;
+    // Vertical sword: handle at bottom, blade pointing up
+    // Bigger overall proportions
 
+    // Dimensions
+    var bladeHW = 2.14 * s;   // blade half-width (reduced 15%)
+    var bladeLen = 16 * s;    // rectangular portion length
+    var tipLen = 4 * s;       // triangle tip length
+    var guardHW = 4.28 * s;   // crossguard half-width (reduced 15%)
+    var guardH = 1.8 * s;     // crossguard height
+    var gripHW = 1.37 * s;    // grip half-width (reduced 15%)
+    var gripLen = 7 * s;      // grip length
+
+    // Center the sword vertically: shift so visual center is at y=0
     var rawTipTop = -bladeLen - tipLen + 2 * s;
     var rawGripBot = 2 * s + guardH + gripLen;
     var centerOffset = (rawTipTop + rawGripBot) / 2;
     c.translate(0, -centerOffset);
 
+    // Y positions (original coordinates, centering handled by translate)
     var tipTop = -bladeLen - tipLen + 2 * s;
     var bladeTop = -bladeLen + 2 * s;
-    var bladeBot = 2 * s;
+    var bladeBot = 2 * s;     // where blade meets crossguard
     var guardTop = bladeBot;
     var guardBot = guardTop + guardH;
     var gripTop = guardBot;
     var gripBot = gripTop + gripLen;
 
-    // Edge glow (only if scheme has glow — 'black' default has none)
-    if (BLADE.hasGlow) {
-      var gR = BLADE.glowColor[0], gG = BLADE.glowColor[1], gB = BLADE.glowColor[2];
+    // --- Edge glow (conditional on blade scheme) ---
+    var bScheme = BLADE_SCHEMES[activeBladeScheme];
+    if (bScheme.hasGlow) {
+      var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
       c.save();
       c.globalAlpha = 0.4;
       var glowW = 4 * s;
@@ -407,15 +603,18 @@ var LaserPips = (function () {
       c.restore();
     }
 
-    // Blade body
+    // --- Blade body (rectangle + triangle tip) ---
     c.beginPath();
-    c.moveTo(0, tipTop);
-    c.lineTo(bladeHW, bladeTop);
-    c.lineTo(bladeHW, bladeBot);
-    c.lineTo(-bladeHW, bladeBot);
-    c.lineTo(-bladeHW, bladeTop);
+    // Triangle tip
+    c.moveTo(0, tipTop);                    // sharp point
+    c.lineTo(bladeHW, bladeTop);            // right shoulder
+    // Rectangular body
+    c.lineTo(bladeHW, bladeBot);            // right bottom
+    c.lineTo(-bladeHW, bladeBot);           // left bottom
+    c.lineTo(-bladeHW, bladeTop);           // left shoulder
     c.closePath();
 
+    // Steel/dark blade gradient
     var bladeGrad = c.createLinearGradient(-bladeHW, 0, bladeHW, 0);
     bladeGrad.addColorStop(0, '#888888');
     bladeGrad.addColorStop(0.15, '#aaaaaa');
@@ -427,18 +626,20 @@ var LaserPips = (function () {
     c.fillStyle = bladeGrad;
     c.fill();
 
+    // Blade outline
     c.strokeStyle = 'rgba(40, 40, 40, 0.6)';
     c.lineWidth = 0.5 * s;
     c.lineJoin = 'round';
     c.stroke();
 
-    // Center fuller
+    // Center fuller (groove down blade center)
     c.beginPath();
     c.moveTo(0, tipTop + 3 * s);
     c.lineTo(0, bladeBot - 1 * s);
     c.strokeStyle = 'rgba(0, 0, 0, 0.12)';
     c.lineWidth = 1.2 * s;
     c.stroke();
+    // Fuller highlight
     c.beginPath();
     c.moveTo(0.4 * s, tipTop + 3.5 * s);
     c.lineTo(0.4 * s, bladeBot - 1.5 * s);
@@ -446,7 +647,26 @@ var LaserPips = (function () {
     c.lineWidth = 0.4 * s;
     c.stroke();
 
-    // Crossguard
+    // Subtle edge lines (along full blade including tip) — only for glow variants
+    if (bScheme.hasGlow) {
+      var eR = bScheme.glowColor[0], eG = bScheme.glowColor[1], eB = bScheme.glowColor[2];
+      c.beginPath();
+      c.moveTo(0, tipTop);
+      c.lineTo(-bladeHW, bladeTop);
+      c.lineTo(-bladeHW, bladeBot);
+      c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.35)';
+      c.lineWidth = 0.7 * s;
+      c.stroke();
+      c.beginPath();
+      c.moveTo(0, tipTop);
+      c.lineTo(bladeHW, bladeTop);
+      c.lineTo(bladeHW, bladeBot);
+      c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.35)';
+      c.lineWidth = 0.7 * s;
+      c.stroke();
+    }
+
+    // --- Crossguard ---
     c.beginPath();
     c.rect(-guardHW, guardTop, guardHW * 2, guardH);
     var guardGrad = c.createLinearGradient(0, guardTop, 0, guardBot);
@@ -461,6 +681,7 @@ var LaserPips = (function () {
     c.lineWidth = 0.3 * s;
     c.stroke();
 
+    // Guard end caps
     c.beginPath();
     c.arc(-guardHW, guardTop + guardH / 2, guardH * 0.4, 0, Math.PI * 2);
     c.fillStyle = '#4a4a4a';
@@ -470,7 +691,7 @@ var LaserPips = (function () {
     c.fillStyle = '#4a4a4a';
     c.fill();
 
-    // Grip
+    // --- Handle/grip ---
     c.beginPath();
     c.rect(-gripHW, gripTop, gripHW * 2, gripLen);
     var handleGrad = c.createLinearGradient(-gripHW, 0, gripHW, 0);
@@ -498,7 +719,7 @@ var LaserPips = (function () {
     }
     c.restore();
 
-    // Pommel
+    // Pommel (bottom end cap)
     c.beginPath();
     c.arc(0, gripBot, gripHW * 0.7, 0, Math.PI * 2);
     c.fillStyle = '#2a2a2a';
@@ -509,41 +730,303 @@ var LaserPips = (function () {
 
     c.restore();
   }
+  // ---- Sai pip drawing ----
+  function drawSaiPip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
 
-  // ---- Combiner pip ----
+    var s = size / 20;
+    var bScheme = BLADE_SCHEMES[activeBladeScheme];
+
+    // Dimensions
+    var prongW = 1.28 * s;       // central prong half-width (reduced 15%)
+    var prongLen = 22 * s;       // central prong length (longer)
+    var tipLen = 3.5 * s;        // pointed tip length
+    var yokeY = 4 * s;           // where side prongs branch
+    var yokeSpread = 6.41 * s;   // how far side prongs go out (reduced 15%)
+    var yokeCurveUp = 7 * s;     // how far side prong tips curve back up
+    var yokeW = 1.54 * s;        // side prong half-width (reduced 15%)
+    var gripHW = 1.54 * s;       // grip half-width (reduced 15%)
+    var gripLen = 7 * s;         // grip length
+    var gripTop = yokeY + 1 * s;
+
+    // Center the sai vertically: shift so visual center is at y=0
+    var rawTipTop = -prongLen / 2 + 2 * s;
+    var rawGripBot = gripTop + gripLen;
+    var centerOffset = (rawTipTop + rawGripBot) / 2;
+    c.translate(0, -centerOffset);
+
+    // Y positions
+    var tipTop = -prongLen / 2 + 2 * s;
+    var prongTop = tipTop + tipLen;
+    var prongBot = yokeY;
+
+    // --- Glow effect ---
+    if (bScheme.hasGlow) {
+      var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
+      c.save();
+      c.globalAlpha = 0.35;
+      var glowW = 3.5 * s;
+      var leftG = c.createLinearGradient(-prongW - glowW, 0, -prongW, 0);
+      leftG.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
+      leftG.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',1)');
+      c.fillStyle = leftG;
+      c.fillRect(-prongW - glowW, prongTop, glowW, prongBot - prongTop);
+      var rightG = c.createLinearGradient(prongW, 0, prongW + glowW, 0);
+      rightG.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',1)');
+      rightG.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
+      c.fillStyle = rightG;
+      c.fillRect(prongW, prongTop, glowW, prongBot - prongTop);
+      var tipGlow = c.createRadialGradient(0, tipTop, 0, 0, tipTop, 4 * s);
+      tipGlow.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.7)');
+      tipGlow.addColorStop(0.4, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.3)');
+      tipGlow.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
+      c.fillStyle = tipGlow;
+      c.beginPath();
+      c.arc(0, tipTop, 4 * s, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+
+    // Steel gradient for metal parts
+    var steelGrad = c.createLinearGradient(-prongW * 2, 0, prongW * 2, 0);
+    steelGrad.addColorStop(0, '#888888');
+    steelGrad.addColorStop(0.15, '#aaaaaa');
+    steelGrad.addColorStop(0.4, '#cccccc');
+    steelGrad.addColorStop(0.5, '#dddddd');
+    steelGrad.addColorStop(0.6, '#cccccc');
+    steelGrad.addColorStop(0.85, '#aaaaaa');
+    steelGrad.addColorStop(1, '#888888');
+
+    // --- Side prongs (yoku) as filled pointed shapes ---
+    // Each side prong: starts at guard, curves outward and up, ends in a point
+    var yokeTipY = yokeY - yokeCurveUp;
+    var yokeCtrlY = yokeY + 3.5 * s;  // control point for curve
+
+    // Left side prong (filled shape with pointed tip)
+    c.beginPath();
+    // Inner edge (closer to center)
+    c.moveTo(-prongW * 0.3, yokeY - 1.5 * s);
+    c.quadraticCurveTo(-yokeSpread * 0.5, yokeCtrlY - yokeW, -yokeSpread, yokeTipY);
+    // Outer edge (farther from center)
+    c.quadraticCurveTo(-yokeSpread * 0.6, yokeCtrlY + yokeW, -prongW * 0.8, yokeY + 0.5 * s);
+    c.closePath();
+    c.fillStyle = steelGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(40, 40, 40, 0.5)';
+    c.lineWidth = 0.35 * s;
+    c.stroke();
+
+    // Right side prong (mirror)
+    c.beginPath();
+    c.moveTo(prongW * 0.3, yokeY - 1.5 * s);
+    c.quadraticCurveTo(yokeSpread * 0.5, yokeCtrlY - yokeW, yokeSpread, yokeTipY);
+    c.quadraticCurveTo(yokeSpread * 0.6, yokeCtrlY + yokeW, prongW * 0.8, yokeY + 0.5 * s);
+    c.closePath();
+    c.fillStyle = steelGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(40, 40, 40, 0.5)';
+    c.lineWidth = 0.35 * s;
+    c.stroke();
+
+    // --- Central prong (rectangle + triangle tip) ---
+    c.beginPath();
+    c.moveTo(0, tipTop);
+    c.lineTo(prongW, prongTop);
+    c.lineTo(prongW, prongBot);
+    c.lineTo(-prongW, prongBot);
+    c.lineTo(-prongW, prongTop);
+    c.closePath();
+    c.fillStyle = steelGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(40, 40, 40, 0.6)';
+    c.lineWidth = 0.4 * s;
+    c.lineJoin = 'round';
+    c.stroke();
+
+    // Center fuller
+    c.beginPath();
+    c.moveTo(0, tipTop + 2.5 * s);
+    c.lineTo(0, prongBot - 0.5 * s);
+    c.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+    c.lineWidth = 0.8 * s;
+    c.stroke();
+
+    // --- Guard area ---
+    c.beginPath();
+    var guardW = 3.5 * s;
+    c.ellipse(0, yokeY, guardW, 1.8 * s, 0, 0, Math.PI * 2);
+    var guardGrad = c.createLinearGradient(-guardW, yokeY, guardW, yokeY);
+    guardGrad.addColorStop(0, '#888888');
+    guardGrad.addColorStop(0.3, '#b0b0b0');
+    guardGrad.addColorStop(0.5, '#cccccc');
+    guardGrad.addColorStop(0.7, '#b0b0b0');
+    guardGrad.addColorStop(1, '#888888');
+    c.fillStyle = guardGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(40, 40, 40, 0.4)';
+    c.lineWidth = 0.3 * s;
+    c.stroke();
+
+    // --- Handle/grip (black hilt) ---
+    c.beginPath();
+    c.rect(-gripHW, gripTop, gripHW * 2, gripLen);
+    var handleGrad = c.createLinearGradient(-gripHW, 0, gripHW, 0);
+    handleGrad.addColorStop(0, '#0a0a0a');
+    handleGrad.addColorStop(0.3, '#1a1a1a');
+    handleGrad.addColorStop(0.5, '#222222');
+    handleGrad.addColorStop(0.7, '#1a1a1a');
+    handleGrad.addColorStop(1, '#0a0a0a');
+    c.fillStyle = handleGrad;
+    c.fill();
+    c.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    c.lineWidth = 0.3 * s;
+    c.stroke();
+
+    // Black wrapping bands (subtle dark lines)
+    c.save();
+    c.strokeStyle = 'rgba(60, 60, 60, 0.5)';
+    c.lineWidth = 0.5 * s;
+    for (var wi = 0; wi < 5; wi++) {
+      var wy = gripTop + 1.2 * s + wi * 1.3 * s;
+      c.beginPath();
+      c.moveTo(-gripHW, wy);
+      c.lineTo(gripHW, wy + 0.6 * s);
+      c.stroke();
+    }
+    c.restore();
+
+    // Pommel (dark)
+    c.beginPath();
+    c.arc(0, gripTop + gripLen, gripHW * 0.7, 0, Math.PI * 2);
+    c.fillStyle = '#2a2a2a';
+    c.fill();
+    c.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    c.lineWidth = 0.3 * s;
+    c.stroke();
+
+    // Glow edge lines on central prong
+    if (bScheme.hasGlow) {
+      var eR = bScheme.glowColor[0], eG = bScheme.glowColor[1], eB = bScheme.glowColor[2];
+      c.beginPath();
+      c.moveTo(0, tipTop);
+      c.lineTo(-prongW, prongTop);
+      c.lineTo(-prongW, prongBot);
+      c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.3)';
+      c.lineWidth = 0.6 * s;
+      c.stroke();
+      c.beginPath();
+      c.moveTo(0, tipTop);
+      c.lineTo(prongW, prongTop);
+      c.lineTo(prongW, prongBot);
+      c.strokeStyle = 'rgba(' + eR + ',' + eG + ',' + eB + ',0.3)';
+      c.lineWidth = 0.6 * s;
+      c.stroke();
+    }
+
+    c.restore();
+  }
+  // ---- Fan Blade pip drawing (V1, hidden/deactivated alternate — 5 blades, angled) ----
+  function drawFanPip(c, x, y, size, flip) {
+    c.save();
+    c.translate(x, y);
+    if (flip) c.rotate(Math.PI);
+    var s = (size * 1.3) / 20;  // 30% larger
+    var bScheme = BLADE_SCHEMES[activeBladeScheme];
+    var numBlades = 4;
+    var fanR = 10 * s;
+    var bladeW = 3.6 * s;
+    var rivetR = 2.2 * s;
+    var sweep = Math.PI * 0.7;          // 126° spread
+    var startAngle = -Math.PI / 2 - sweep / 2;  // centered upright
+    // Vertical centering: fan extends from -fanR (top) to rivetR (bottom)
+    var topExtent = -fanR * 0.95;
+    var botExtent = rivetR * 0.8;
+    c.translate(0, -(topExtent + botExtent) / 2);
+    if (bScheme.hasGlow) {
+      var gR = bScheme.glowColor[0], gG = bScheme.glowColor[1], gB = bScheme.glowColor[2];
+      c.save(); c.globalAlpha = 0.3;
+      var gg = c.createRadialGradient(0, 0, rivetR, 0, 0, fanR * 1.3);
+      gg.addColorStop(0, 'rgba(' + gR + ',' + gG + ',' + gB + ',0.5)');
+      gg.addColorStop(1, 'rgba(' + gR + ',' + gG + ',' + gB + ',0)');
+      c.fillStyle = gg; c.beginPath(); c.arc(0, 0, fanR * 1.3, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    for (var bi = 0; bi < numBlades; bi++) {
+      var angle = startAngle + (bi / (numBlades - 1)) * sweep;
+      c.save(); c.rotate(angle);
+      var tipX = fanR, halfW = bladeW / 2;
+      c.beginPath();
+      c.moveTo(rivetR * 0.7, 0);
+      c.bezierCurveTo(rivetR + fanR * 0.2, -halfW, fanR * 0.65, -halfW * 0.8, tipX, 0);
+      c.bezierCurveTo(fanR * 0.65, halfW * 0.8, rivetR + fanR * 0.2, halfW, rivetR * 0.7, 0);
+      c.closePath();
+      var grad = c.createLinearGradient(0, -halfW, 0, halfW);
+      grad.addColorStop(0, '#888'); grad.addColorStop(0.5, '#ddd'); grad.addColorStop(1, '#888');
+      c.fillStyle = grad; c.fill();
+      c.strokeStyle = 'rgba(40,40,40,0.5)'; c.lineWidth = 0.4 * s; c.stroke();
+      c.restore();
+    }
+    c.beginPath(); c.arc(0, 0, rivetR, 0, Math.PI * 2);
+    var rg = c.createRadialGradient(-rivetR * 0.3, -rivetR * 0.3, 0, 0, 0, rivetR);
+    rg.addColorStop(0, '#b0b0b0'); rg.addColorStop(1, '#3a3a3a');
+    c.fillStyle = rg; c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 0.5 * s; c.stroke();
+    c.restore();
+  }
+  function drawBladeAny(c, x, y, size, flip) {
+    if (activeBladeStyle === 'fan') {
+      drawFanPip(c, x, y, size, flip);
+    } else if (activeBladeStyle === 'sai') {
+      drawSaiPip(c, x, y, size, flip);
+    } else {
+      drawBladePip(c, x, y, size, flip);
+    }
+  }
+  // ---- Combiner pip drawing (V1 style: bottom + bottom-right inputs, single circle, single output) ----
   function drawCombinerPip(c, x, y, size, flip, dimGlow) {
     c.save();
     c.translate(x, y);
     if (flip) c.rotate(Math.PI);
 
     var s = size / 20;
-    var beamColors = COMBINER.beamColors;
+    var cScheme = COMBINER_SCHEMES[activeCombinerScheme];
+    var beamColors = cScheme.beamColors;
 
+    // Square dimensions
     var rectHW = 5.13 * s;
     var rectHH = 5.13 * s;
     var rectOX = 0;
     var rectOY = 0;
 
+    // Beam parameters (reduced 20% from prism: 1.6 * 0.8 = 1.28)
     var beamW = 1.28 * s;
     var outBeamW = beamW * 1.4;
 
+    // Convergence point (center of rectangle)
     var convX = rectOX;
     var convY = rectOY;
 
+    // Input/output beam lengths
     var beamLen = rectHW * 1.5;
     var outTopY = rectOY - rectHH - beamLen;
     outTopY = outTopY + (rectOY - rectHH - outTopY) * 0.25;
 
-    var inLen = beamLen * 1.728;
+    // Input beams: one from bottom (straight up), one from middle-right (horizontal)
+    var inLen = beamLen * 1.728;  // undid last 10% extension
     var inStartOffsets = [
-      { x: 0, y: inLen },
-      { x: inLen, y: 0 }
+      { x: 0, y: inLen },       // bottom (straight up)
+      { x: inLen, y: 0 }        // middle-right (horizontal, right angle with bottom beam)
     ];
     var inBeamColors = [beamColors[0], beamColors[beamColors.length - 1]];
 
-    var waveAmp = 0.625 * s;
+    // Wave parameters
+    var waveAmp = 0.625 * s;  // increased 25%
     var waveFreq = 2.5;
     var waveSteps = 30;
+
+    // --- Draw order: shadow, rect body, beams ON TOP, then glow ---
 
     // Drop shadow
     c.save();
@@ -557,6 +1040,7 @@ var LaserPips = (function () {
     c.beginPath();
     c.rect(rectOX - rectHW, rectOY - rectHH, rectHW * 2, rectHH * 2);
 
+    // Glass fill
     var glassGrad = c.createLinearGradient(rectOX - rectHW, rectOY - rectHH, rectOX + rectHW, rectOY + rectHH);
     glassGrad.addColorStop(0, 'rgba(210, 230, 250, 0.8)');
     glassGrad.addColorStop(0.25, 'rgba(185, 210, 240, 0.65)');
@@ -566,6 +1050,7 @@ var LaserPips = (function () {
     c.fillStyle = glassGrad;
     c.fill();
 
+    // Rectangle outline
     c.strokeStyle = 'rgba(40, 70, 110, 0.6)';
     c.lineWidth = 0.8 * s;
     c.lineJoin = 'round';
@@ -583,7 +1068,7 @@ var LaserPips = (function () {
     c.fillStyle = 'rgba(30, 60, 100, 0.08)';
     c.fill();
 
-    // Sinusoidal incoming beams
+    // --- Incoming sinusoidal beams ---
     c.save();
     c.globalAlpha = 0.85;
     for (var ib = 0; ib < 2; ib++) {
@@ -604,6 +1089,7 @@ var LaserPips = (function () {
         var perpX = -dy / len;
         var perpY = dx / len;
         var taper = 1 - t * t;
+        // Mirror the right beam for symmetry
         var waveSign = (ib === 1) ? -1 : 1;
         var wave = Math.sin(t * waveFreq * Math.PI * 2) * waveAmp * taper * waveSign;
         var px = baseX + perpX * wave;
@@ -618,14 +1104,38 @@ var LaserPips = (function () {
     }
     c.restore();
 
-    // Output beam straight up
+    // --- Output beam going straight up from rectangle top ---
     c.save();
     c.globalAlpha = 0.85;
-    if (COMBINER.outputBorder) {
+    if (cScheme.hybridOutput) {
+      var outStartY = rectOY - rectHH * 0.5;
+      var hybridW = outBeamW * 3;
+      var halfHybridW = hybridW / 2;
+      var halfRedW = outBeamW * 0.6;
+      var halfBlueW = outBeamW * 0.6;
+      c.beginPath();
+      c.rect(rectOX - halfHybridW, outTopY, hybridW, outStartY - outTopY);
+      c.fillStyle = dimGlow ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.65)';
+      c.fill();
+      c.beginPath();
+      c.moveTo(rectOX - halfHybridW + halfRedW / 2, outStartY);
+      c.lineTo(rectOX - halfHybridW + halfRedW / 2, outTopY);
+      c.strokeStyle = dimGlow ? 'rgba(198, 40, 40, 0.5)' : '#c62828';
+      c.lineWidth = halfRedW;
+      c.lineCap = 'butt';
+      c.stroke();
+      c.beginPath();
+      c.moveTo(rectOX + halfHybridW - halfBlueW / 2, outStartY);
+      c.lineTo(rectOX + halfHybridW - halfBlueW / 2, outTopY);
+      c.strokeStyle = dimGlow ? 'rgba(21, 101, 192, 0.5)' : '#1565C0';
+      c.lineWidth = halfBlueW;
+      c.lineCap = 'butt';
+      c.stroke();
+    } else if (cScheme.outputBorder) {
       c.beginPath();
       c.moveTo(rectOX, rectOY - rectHH * 0.5);
       c.lineTo(rectOX, outTopY);
-      c.strokeStyle = COMBINER.outputBorder;
+      c.strokeStyle = cScheme.outputBorder;
       c.lineWidth = outBeamW + 0.75 * s;
       c.lineCap = 'butt';
       c.stroke();
@@ -637,16 +1147,18 @@ var LaserPips = (function () {
       c.lineCap = 'round';
       c.stroke();
     }
-    c.beginPath();
-    c.moveTo(rectOX, rectOY - rectHH * 0.5);
-    c.lineTo(rectOX, outTopY);
-    c.strokeStyle = COMBINER.outputColor;
-    c.lineWidth = outBeamW;
-    c.lineCap = 'butt';
-    c.stroke();
+    if (!cScheme.hybridOutput) {
+      c.beginPath();
+      c.moveTo(rectOX, rectOY - rectHH * 0.5);
+      c.lineTo(rectOX, outTopY);
+      c.strokeStyle = cScheme.outputColor;
+      c.lineWidth = outBeamW;
+      c.lineCap = 'butt';
+      c.stroke();
+    }
     c.restore();
 
-    // White glow at center
+    // --- White glow at rectangle center ---
     var glowR = dimGlow ? 10 * s : 7.5 * s;
     var convGlow = c.createRadialGradient(convX, convY, 0, convX, convY, glowR);
     if (dimGlow) {
@@ -669,6 +1181,7 @@ var LaserPips = (function () {
     c.arc(convX, convY, glowR, 0, Math.PI * 2);
     c.fill();
 
+    // Small solid white core for placeholder
     if (dimGlow) {
       c.save();
       c.globalAlpha = 1.0;
@@ -681,12 +1194,181 @@ var LaserPips = (function () {
 
     c.restore();
   }
+  // ---- Pip Layouts ----
+  // [relativeX, relativeY, isFlipped]
+  // 3 = triangle: 1 top center, 2 bottom row
+  // 10 = top 5 offset right, bottom 5 offset left (for wider "10" text)
+  // Standard layouts for text-based suits (clubs)
+  // Classic pip layouts — designed for 20px pips in 42×64 area
+  // Top rows at y=0.12, bottom rows at y=0.88 (consistent edges across all ranks)
+  // X columns at 0.2/0.8 for 2-col, 0.5 for center
+  var PIP_LAYOUTS = {
+    1:  [[0.5, 0.5, false]],
+    2:  [[0.5, 0.12, false], [0.5, 0.88, true]],
+    3:  [[0.5, 0.12, false], [0.5, 0.5, false], [0.5, 0.88, true]],
+    4:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    5:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.5, 0.5, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    6:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    7:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.5, 0.31, false], [0.2, 0.88, true], [0.8, 0.88, true]],
+    8:  [[0.2, 0.12, false], [0.8, 0.12, false], [0.2, 0.5, false], [0.8, 0.5, false], [0.5, 0.31, false], [0.5, 0.69, true], [0.2, 0.88, true], [0.8, 0.88, true]],
+    9:  [[0.2, 0.08, false], [0.8, 0.08, false], [0.2, 0.34, false], [0.8, 0.34, false], [0.5, 0.5, false], [0.2, 0.66, true], [0.8, 0.66, true], [0.2, 0.92, true], [0.8, 0.92, true]],
+    10: [[0.2, 0.08, false], [0.8, 0.08, false], [0.5, 0.21, false], [0.2, 0.34, false], [0.8, 0.34, false], [0.2, 0.66, true], [0.8, 0.66, true], [0.5, 0.79, true], [0.2, 0.92, true], [0.8, 0.92, true]]
+  };
+
+  // Custom pip layouts for laser suits (drawn symbols need more room)
+  // 2,3 = horizontal center line; 6 = 2×3; 7 = 2-3-2; 8 = 3-2-3; 9 = 3×3; 10 = 2-3-3-2
+  // Wide horizontal spread: 3-col = 0.08/0.50/0.92, 2-col = 0.15/0.85
+  var CUSTOM_PIP_LAYOUTS = {
+    1:  [[0.5, 0.5, false]],
+    2:  [[0.2, 0.5, false], [0.8, 0.5, false]],
+    3:  [[0.5, 0.2, false], [0.2, 0.78, false], [0.8, 0.78, false]],
+    4:  [[0.15, 0.15, false], [0.85, 0.15, false], [0.15, 0.85, true], [0.85, 0.85, true]],
+    5:  [[0.15, 0.12, false], [0.85, 0.12, false], [0.5, 0.5, false], [0.15, 0.88, true], [0.85, 0.88, true]],
+    6:  [[0.08, 0.22, false], [0.5, 0.22, false], [0.92, 0.22, false],
+         [0.08, 0.78, true],  [0.5, 0.78, true],  [0.92, 0.78, true]],
+    7:  [[0.25, 0.12, false], [0.75, 0.12, false],
+         [0.08, 0.5, false],  [0.5, 0.5, false],  [0.92, 0.5, false],
+         [0.25, 0.88, true],  [0.75, 0.88, true]],
+    8:  [[0.08, 0.12, false], [0.5, 0.12, false], [0.92, 0.12, false],
+         [0.25, 0.5, false],  [0.75, 0.5, false],
+         [0.08, 0.88, true],  [0.5, 0.88, true],  [0.92, 0.88, true]],
+    9:  [[0.08, 0.12, false], [0.5, 0.12, false], [0.92, 0.12, false],
+         [0.08, 0.5, false],  [0.5, 0.5, false],  [0.92, 0.5, false],
+         [0.08, 0.88, true],  [0.5, 0.88, true],  [0.92, 0.88, true]],
+    10: [[0.25, 0.02, false], [0.75, 0.02, false],
+         [0.08, 0.34, false], [0.5, 0.34, false], [0.92, 0.34, false],
+         [0.08, 0.66, true],  [0.5, 0.66, true],  [0.92, 0.66, true],
+         [0.25, 0.98, true],  [0.75, 0.98, true]]
+  };
+
+  // Prisms use vertical arrangement for 2-card
+  var PRISM_2_LAYOUT = [[0.5, 0.2, false], [0.5, 0.8, false]];
+
+  // Prism-specific layouts: rows of 3 have 0.5 gap between pips (matching rows of 2 at 0.25/0.75), so x = 0.0 / 0.5 / 1.0
+  var PRISM_6_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
+       [0.2, 0.5, false],  [0.8, 0.5, false],
+       [0.2, 0.88, false], [0.8, 0.88, false]];
+  var PRISM_7_LAYOUT = [[0.25, 0.12, false], [0.75, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.25, 0.88, true],  [0.75, 0.88, true]];
+  var PRISM_8_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.25, 0.5, false],  [0.75, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var PRISM_9_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var PRISM_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
+       [0.0, 0.34, false], [0.5, 0.34, false], [1.0, 0.34, false],
+       [0.0, 0.66, true],  [0.5, 0.66, true],  [1.0, 0.66, true],
+       [0.25, 0.98, true],  [0.75, 0.98, true]];
+
+  // Diodes & Prisms use 3 rows of 2 for 6-card (wider symbols need vertical stacking)
+  var WIDE_6_LAYOUT = [[0.2, 0.12, false], [0.8, 0.12, false],
+       [0.2, 0.5, false],  [0.8, 0.5, false],
+       [0.2, 0.88, false], [0.8, 0.88, false]];
+
+  // Diode-specific 10: rows of 2 pushed further from rows of 3
+  var DIODE_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
+       [0.08, 0.34, false], [0.5, 0.34, false], [0.92, 0.34, false],
+       [0.08, 0.66, false], [0.5, 0.66, false], [0.92, 0.66, false],
+       [0.25, 0.98, false], [0.75, 0.98, false]];
+
+  // Blade-specific 10: 3-4-3 rows, all centered
+  var BLADE_10_LAYOUT = [[0.15, 0.08, false], [0.50, 0.08, false], [0.85, 0.08, false],
+       [-0.025, 0.50, false], [0.325, 0.50, false], [0.675, 0.50, false], [1.025, 0.50, false],
+       [0.15, 0.92, false], [0.50, 0.92, false], [0.85, 0.92, false]];
+
+  // Combiner-specific layouts: rows of 3 at 0.0/0.5/1.0 (wider than standard 0.08/0.50/0.92)
+  var COMBINER_7_LAYOUT = [[0.25, 0.12, false], [0.75, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.25, 0.88, true],  [0.75, 0.88, true]];
+  var COMBINER_8_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.25, 0.5, false],  [0.75, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var COMBINER_9_LAYOUT = [[0.0, 0.12, false], [0.5, 0.12, false], [1.0, 0.12, false],
+       [0.0, 0.5, false],  [0.5, 0.5, false],  [1.0, 0.5, false],
+       [0.0, 0.88, true],  [0.5, 0.88, true],  [1.0, 0.88, true]];
+  var COMBINER_10_LAYOUT = [[0.25, 0.02, false], [0.75, 0.02, false],
+       [0.0, 0.34, false], [0.5, 0.34, false], [1.0, 0.34, false],
+       [0.0, 0.66, true],  [0.5, 0.66, true],  [1.0, 0.66, true],
+       [0.25, 0.98, true],  [0.75, 0.98, true]];
+
+  // Blade-specific layouts with more vertical spacing
+  var BLADE_4_LAYOUT = [[0.15, 0.1, false], [0.85, 0.1, false], [0.15, 0.9, false], [0.85, 0.9, false]];
+  var BLADE_6_LAYOUT = [[0.2, 0.08, false], [0.8, 0.08, false],
+       [0.2, 0.5, false],  [0.8, 0.5, false],
+       [0.2, 0.92, false], [0.8, 0.92, false]];
+  var BLADE_5_LAYOUT = [[0.15, 0.08, false], [0.85, 0.08, false], [0.5, 0.5, false], [0.15, 0.92, false], [0.85, 0.92, false]];
+  var BLADE_7_LAYOUT = [[0.25, 0.08, false], [0.75, 0.08, false],
+       [0.08, 0.5, false],  [0.5, 0.5, false],  [0.92, 0.5, false],
+       [0.25, 0.92, false], [0.75, 0.92, false]];
+  var BLADE_8_LAYOUT = [[0.08, 0.08, false], [0.5, 0.08, false], [0.92, 0.08, false],
+       [0.25, 0.5, false],  [0.75, 0.5, false],
+       [0.08, 0.92, false], [0.5, 0.92, false], [0.92, 0.92, false]];
+  var BLADE_9_LAYOUT = [[0.08, 0.08, false], [0.5, 0.08, false], [0.92, 0.08, false],
+       [0.08, 0.5, false],  [0.5, 0.5, false],  [0.92, 0.5, false],
+       [0.08, 0.92, false], [0.5, 0.92, false], [0.92, 0.92, false]];
+
+  // ---- Layout selection (extracted from SoloTerra's renderPips) ----
+  // Returns the pip layout for a rank count. isCustom=true selects the
+  // wide-spread laser layouts with per-suit overrides.
+  function getLayout(suit, count, isCustom) {
+    var layout = PIP_LAYOUTS[count];
+    if (!layout) return null;
+
+    if (isCustom && CUSTOM_PIP_LAYOUTS[count]) {
+      layout = CUSTOM_PIP_LAYOUTS[count];
+      // Suit-specific layout overrides
+      if (count === 6 && (suit === 'diamonds' || suit === 'spades' || suit === 'clubs')) {
+        layout = WIDE_6_LAYOUT;
+      } else if (suit === 'hearts') {
+        if (count === 6) layout = PRISM_6_LAYOUT;
+        else if (count === 7) layout = PRISM_7_LAYOUT;
+        else if (count === 8) layout = PRISM_8_LAYOUT;
+        else if (count === 9) layout = PRISM_9_LAYOUT;
+        else if (count === 10) layout = PRISM_10_LAYOUT;
+      } else if (count === 10 && suit === 'diamonds') {
+        layout = DIODE_10_LAYOUT;
+      } else if (suit === 'clubs') {
+        if (count === 7) layout = COMBINER_7_LAYOUT;
+        else if (count === 8) layout = COMBINER_8_LAYOUT;
+        else if (count === 9) layout = COMBINER_9_LAYOUT;
+        else if (count === 10) layout = COMBINER_10_LAYOUT;
+      } else if (suit === 'spades' && activeBladeStyle === 'fan') {
+        // Fan uses same wider spacing as prisms/combiners (0.0/0.5/1.0 for rows of 3)
+        if (count === 7) layout = PRISM_7_LAYOUT;
+        else if (count === 8) layout = PRISM_8_LAYOUT;
+        else if (count === 9) layout = PRISM_9_LAYOUT;
+        else if (count === 10) layout = PRISM_10_LAYOUT;
+      } else if (suit === 'spades' && activeBladeStyle !== 'fan') {
+        // Sai/Sword use blade-specific layouts
+        if (count === 6) layout = BLADE_6_LAYOUT;
+        else if (count === 4) layout = BLADE_4_LAYOUT;
+        else if (count === 5) layout = BLADE_5_LAYOUT;
+        else if (count === 7) layout = BLADE_7_LAYOUT;
+        else if (count === 8) layout = BLADE_8_LAYOUT;
+        else if (count === 9) layout = BLADE_9_LAYOUT;
+        else if (count === 10) layout = BLADE_10_LAYOUT;
+      }
+      // Fan blades otherwise use CUSTOM_PIP_LAYOUTS (2-3-3-2 for 10)
+    }
+
+    return layout;
+  }
+
+  // Pip size for laser suits (SoloTerra's renderPips sizing rules)
+  function getCustomPipSize(suit, count) {
+    var customSize = 16;
+    if (count === 1) customSize = 32;
+    else if (suit === 'hearts' && count > 2) customSize = 15.2; // prisms 5% smaller for 3+
+    return customSize;
+  }
 
   // Suit-aware dispatcher for the four laser pips
   function drawPip(c, x, y, suit, size, flip) {
     if (suit === 'diamonds')      drawDiodePip(c, x, y, size, flip);
     else if (suit === 'hearts')   drawPrismPip(c, x, y, size, flip, false);
-    else if (suit === 'spades')   drawBladePip(c, x, y, size, flip);
+    else if (suit === 'spades')   drawBladeAny(c, x, y, size, flip);
     else if (suit === 'clubs')    drawCombinerPip(c, x, y, size, flip, false);
   }
 
@@ -710,11 +1392,21 @@ var LaserPips = (function () {
     drawDiodePip: drawDiodePip,
     drawPrismPip: drawPrismPip,
     drawBladePip: drawBladePip,
+    drawSaiPip: drawSaiPip,
+    drawFanPip: drawFanPip,
+    drawBladeAny: drawBladeAny,
     drawCombinerPip: drawCombinerPip,
     drawPip: drawPip,
     renderPipCanvas: renderPipCanvas,
+    getLayout: getLayout,
+    getCustomPipSize: getCustomPipSize,
+    getSuitColor: getSuitColor,
+    setDiodeScheme: setDiodeScheme,
+    setPrismScheme: setPrismScheme,
+    setBladeScheme: setBladeScheme,
+    setBladeStyle: setBladeStyle,
+    setCombinerScheme: setCombinerScheme,
     getLabel: getLabel,
-    LASER_TEXT_COLORS: LASER_TEXT_COLORS,
     SUIT_LABELS: SUIT_LABELS,
     SUIT_LABELS_SINGULAR: SUIT_LABELS_SINGULAR
   };

@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Laser Stacks - A Card Game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -25,6 +27,10 @@
       <h1 class="game-title">Laser<br>Stacks</h1>
       <div class="title-buttons">
         <button class="btn btn-gold btn-play" id="btn-play">Play</button>
+        <button class="btn btn-outline btn-menu-size" id="btn-continue" style="display:none">
+          Continue
+          <span class="btn-sub" id="continue-sub"></span>
+        </button>
         <button class="btn btn-outline btn-menu-size" id="btn-how-to-play">How to Play</button>
         <button class="btn btn-outline btn-menu-size" id="btn-options">Options</button>
       </div>
@@ -149,16 +155,6 @@
       <button class="btn btn-outline btn-action-menu" id="btn-setup-back">Main Menu</button>
     </div>
 
-    <!-- Player count control (hidden for Laser Stacks — always 4) -->
-    <div class="player-count-control" id="player-count-control" style="display:none">
-      <label class="pcc-label">Players:</label>
-      <div class="pcc-row">
-        <button class="btn btn-gold btn-large" id="btn-fewer">&minus;</button>
-        <span id="player-count-display">4</span>
-        <button class="btn btn-gold btn-large" id="btn-more">+</button>
-      </div>
-    </div>
-
     <div class="table-container">
       <div class="card-table game-table">
         <canvas id="game-canvas"></canvas>
@@ -176,6 +172,9 @@
     <div class="hand-bar" id="hand-bar" style="display:none">
       <div class="hand-bar-cards" id="hand-bar-cards"></div>
     </div>
+
+    <!-- Portrait-mode status message (mirrors #hud-message, shown above the hand bar) -->
+    <div id="pbar-message"></div>
 
     <!-- Bidding overlay -->
     <div class="bid-overlay" id="bid-overlay" style="display:none">
@@ -204,7 +203,7 @@
     <div class="confirm-overlay" id="confirm-exit" style="display:none">
       <div class="confirm-panel">
         <p class="confirm-title">Return to Main Menu?</p>
-        <p class="confirm-sub">Your current game will be lost.</p>
+        <p class="confirm-sub">Your game is saved &mdash; use Continue to pick it back up.</p>
         <div class="confirm-buttons">
           <button class="btn btn-gold" id="btn-confirm-yes">Yes, Exit</button>
           <button class="btn btn-outline" id="btn-confirm-no">Cancel</button>
@@ -228,7 +227,7 @@
     <div class="confirm-overlay" id="confirm-exit-results" style="display:none">
       <div class="confirm-panel">
         <p class="confirm-title">Return to Main Menu?</p>
-        <p class="confirm-sub">Your current game will be lost.</p>
+        <p class="confirm-sub">Your game is saved &mdash; use Continue to pick it back up.</p>
         <div class="confirm-buttons">
           <button class="btn btn-gold" id="btn-confirm-results-yes">Yes, Exit</button>
           <button class="btn btn-outline" id="btn-confirm-results-no">Cancel</button>
@@ -239,15 +238,15 @@
 
   <!-- Scripts in dependency order -->
   <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
-  <script src="js/sprites.js?v=2"></script>
-  <script src="js/cards.js?v=2"></script>
-  <script src="js/game.js?v=2"></script>
-  <script src="js/animations.js?v=2"></script>
-  <script src="js/textures.js?v=2"></script>
-  <script src="js/laser-pips.js?v=2"></script>
-  <script src="js/renderer.js?v=2"></script>
-  <script src="js/save.js?v=2"></script>
-  <script src="js/ui.js?v=2"></script>
+  <script src="js/sprites.js?v=3"></script>
+  <script src="js/cards.js?v=3"></script>
+  <script src="js/game.js?v=3"></script>
+  <script src="js/animations.js?v=3"></script>
+  <script src="js/textures.js?v=3"></script>
+  <script src="js/laser-pips.js?v=3"></script>
+  <script src="js/renderer.js?v=3"></script>
+  <script src="js/save.js?v=3"></script>
+  <script src="js/ui.js?v=3"></script>
 
 </body>
 </html>

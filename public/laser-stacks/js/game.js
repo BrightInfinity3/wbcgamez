@@ -14,7 +14,6 @@ var Game = (function () {
   // ---- State ----
   var state = {
     players: [],
-    dealerIndex: 0,
     deck: [],
     hands: {},             // playerId -> [cards]
     bids: {},              // playerId -> number (0-9)
@@ -37,14 +36,13 @@ var Game = (function () {
   };
 
   // ---- Player Factory ----
-  function createPlayer(id, seatIndex, animal, name, isHuman, isDealer) {
+  function createPlayer(id, seatIndex, animal, name, isHuman) {
     return {
       id: id,
       seatIndex: seatIndex,
       animal: animal,
       name: name,
-      isHuman: isHuman,
-      isDealer: isDealer
+      isHuman: isHuman
     };
   }
 
@@ -59,29 +57,6 @@ var Game = (function () {
       state.scores[players[i].id] = 0;
       state.roundsWon[players[i].id] = 0;
     }
-  }
-
-  // ---- Build Turn Order ----
-  // Clockwise from dealer's left
-  function buildTurnOrder() {
-    var players = state.players;
-    var dealerSeat = players[state.dealerIndex].seatIndex;
-    var sorted = players.slice().sort(function (a, b) { return a.seatIndex - b.seatIndex; });
-
-    var dealerPos = -1;
-    for (var i = 0; i < sorted.length; i++) {
-      if (sorted[i].seatIndex === dealerSeat) {
-        dealerPos = i;
-        break;
-      }
-    }
-
-    var order = [];
-    for (var j = 1; j <= sorted.length; j++) {
-      var idx = (dealerPos + j) % sorted.length;
-      order.push(sorted[idx].id);
-    }
-    return order;
   }
 
   // ---- Build Deal Order (9 cards each, one at a time) ----
@@ -617,7 +592,6 @@ var Game = (function () {
 
   function deserialize(saved) {
     state.players = saved.players;
-    state.dealerIndex = saved.dealerIndex;
     state.deck = saved.deck;
     state.hands = saved.hands;
     state.bids = saved.bids || {};

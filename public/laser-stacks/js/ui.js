@@ -9,12 +9,6 @@ var UI = (function () {
 
   // ---- Constants ----
   var NUM_TABLE_SEATS = 8;
-  var ANIMAL_NICKNAMES = {
-    bear: 'Bruno', cat: 'Shadow', owl: 'Hoot', penguin: 'Waddles',
-    raccoon: 'Bandit', frog: 'Ribbit', dog: 'Buddy', panda: 'Bamboo',
-    monkey: 'Coco', deer: 'Dasher', hedgehog: 'Spike', shark: 'Finn',
-    octopus: 'Inky', hamster: 'Nibbles', parrot: 'Polly', turtle: 'Shelly'
-  };
 
   // ---- Setup State ----
   var setupSeats = [];
@@ -35,30 +29,177 @@ var UI = (function () {
   var trickDisplay = [];   // [{playerId, card, seatIndex}] current trick cards on table
   var resizeListenerAdded = false;
 
-  // ---- Responsive Helpers ----
+  // ---- Responsive Helpers (30's vmin system) ----
+  // DOM-side vmin — must agree with Renderer.getVmin() so canvas geometry
+  // and DOM overlays land on the same points.
+  function getVmin() {
+    var vw = document.documentElement.clientWidth || window.innerWidth;
+    var vh = document.documentElement.clientHeight || window.innerHeight;
+    return Math.min(vw, vh) / 100;
+  }
   function getSetupAvatarSize() {
-    var w = document.documentElement.clientWidth || window.innerWidth;
-    if (w <= 480) return 72;
-    if (w <= 768) return 88;
-    return 112;
+    return 10.4 * getVmin(); // matches .seat-avatar CSS
   }
   function getGameAvatarSize() {
-    var w = document.documentElement.clientWidth || window.innerWidth;
-    if (w <= 480) return 64;
-    if (w <= 768) return 76;
-    return 96;
+    return 7.8 * getVmin(); // matches .game-seat-avatar CSS
+  }
+  // Card scale for flying/deal animations — same formula as drawGameFrame
+  // so cards never change size mid-flight. Reference: 1080p desktop.
+  function getCardScale() {
+    var W = window.innerWidth, H = window.innerHeight;
+    return 1.1 * (Math.min(W, H) / 1080);
   }
 
-  function positionDealerChip(chipEl, chipSize, avatarSize) {
-    var avatarR = avatarSize / 2;
-    chipEl.style.left = 'calc(50% - ' + (avatarR + chipSize) + 'px)';
-    chipEl.style.top = (avatarR - chipSize / 2) + 'px';
+  // ---- View modes (30's mbar/lbar concept, adapted) ----
+  function isMobilePortrait() {
+    return window.matchMedia('(orientation: portrait) and (max-width: 480px)').matches;
+  }
+  function isShortLandscape() {
+    return window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
   }
 
-  function positionRemoveCircle(circleEl, circleSize, avatarSize) {
-    var avatarR = avatarSize / 2;
-    circleEl.style.left = 'calc(50% + ' + avatarR + 'px)';
-    circleEl.style.top = (avatarR - circleSize / 2) + 'px';
+  // Applies/removes the pbar (portrait) and lbar (short landscape) body
+  // classes and tells the renderer which table size to use. Runs on every
+  // viewport change and screen switch.
+  function updateLayoutMode() {
+    var inGame = gamePhase === 'playing' &&
+      document.getElementById('screen-game').classList.contains('active');
+    var pbar = inGame && isMobilePortrait();
+    var lbar = inGame && isShortLandscape();
+
+    var wasPbar = document.body.classList.contains('pbar-active');
+    var wasLbar = document.body.classList.contains('lbar-active');
+    document.body.classList.toggle('pbar-active', pbar);
+    document.body.classList.toggle('lbar-active', lbar);
+
+    if (canvasReady && Renderer.setLayoutMode) {
+      Renderer.setLayoutMode(lbar ? 'lbar' : 'default');
+    }
+
+    // Mode changed: the legend's pixel size changed, so its pip canvases
+    // must be re-rendered at the new resolution.
+    if ((pbar !== wasPbar || lbar !== wasLbar) && inGame) {
+      updateSuitStackLegend(SaveSystem.getSuitStyle());
+    }
+  }
+
+  // ---- Unified viewport-change handler (ported from 30) ----
+  // Rebuilds the canvas renderer and re-lays out DOM overlays. Called on
+  // window.resize, orientationchange, and visualViewport.resize. On iOS,
+  // the orientation event fires BEFORE the final layout is known, so we
+  // re-run after short delays to catch the settled dimensions.
+  function handleViewportChange() {
+    if (!canvasReady) return;
+    if (!document.getElementById('screen-game').classList.contains('active')) return;
+    // Mode first — lbar changes the felt radius the resize renders with.
+    updateLayoutMode();
+    Renderer.resize();
+    // iPad keyboard fix: when a seat-name INPUT has focus, the
+    // visualViewport.resize fired by the keyboard opening triggers this
+    // handler. Re-rendering setup seats would destroy the input element
+    // mid-typing, so skip the seat rebuild while an input is focused.
+    var activeEl = document.activeElement;
+    var inputFocused = activeEl && activeEl.tagName === 'INPUT';
+    if (gamePhase === 'setup') {
+      if (!inputFocused) renderSetupSeats();
+    } else {
+      positionGameOverlays();
+    }
+  }
+
+  function installViewportHandlers() {
+    if (resizeListenerAdded) return;
+    resizeListenerAdded = true;
+
+    // Debounce: only run handleViewportChange after the dimensions have
+    // been stable for ~100ms. Prevents expensive table-texture/particle
+    // rebuilds during URL-bar animations or window drags.
+    var debounceTimer = null;
+    var lastW = 0, lastH = 0;
+    function schedule() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        debounceTimer = null;
+        var w = window.innerWidth, h = window.innerHeight;
+        if (w === lastW && h === lastH) return; // no-op if nothing changed
+        lastW = w; lastH = h;
+        handleViewportChange();
+      }, 100);
+    }
+
+    window.addEventListener('resize', schedule);
+
+    // iOS Safari: orientationchange fires before layout settles; re-run on
+    // a series of delayed ticks to catch the correct dimensions.
+    window.addEventListener('orientationchange', function () {
+      var forceRun = function () { lastW = -1; schedule(); };
+      forceRun();
+      setTimeout(forceRun, 100);
+      setTimeout(forceRun, 300);
+      setTimeout(forceRun, 600);
+    });
+
+    // visualViewport captures changes `resize` misses on mobile (URL bar
+    // hiding/showing, keyboard, pinch-zoom).
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', schedule);
+    }
+
+    // Returning to a backgrounded tab can leave the WebGL canvas blank
+    // (context lost without the event firing). Force a rebuild.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && canvasReady &&
+          document.getElementById('screen-game').classList.contains('active')) {
+        lastW = -1;
+        schedule();
+      }
+    });
+  }
+
+  // Belt-and-suspenders pinch-zoom / double-tap-zoom blocker (from 30 —
+  // iPad Safari ignores user-scalable=no and honors multi-touch gestures
+  // even with touch-action set).
+  function blockPinchZoom() {
+    var prevent = function (e) { e.preventDefault(); };
+    document.addEventListener('gesturestart',  prevent, { passive: false });
+    document.addEventListener('gesturechange', prevent, { passive: false });
+    document.addEventListener('gestureend',    prevent, { passive: false });
+    document.addEventListener('touchstart', function (e) {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('touchmove', function (e) {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('dblclick', prevent, { passive: false });
+    document.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) e.preventDefault();
+    }, { passive: false });
+  }
+
+  // iPad keyboard scroll-persistence fix (from 30): iOS scrolls the window
+  // to bring a focused input above the keyboard and can leave that scroll
+  // stuck after the keyboard closes. Reset on blur and keyboard-close.
+  function installKeyboardScrollReset() {
+    var reset = function () {
+      try {
+        window.scrollTo(0, 0);
+        if (document.body) document.body.scrollTop = 0;
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+      } catch (e) { /* non-fatal */ }
+    };
+    document.addEventListener('focusout', function (e) {
+      if (e.target && e.target.tagName === 'INPUT') {
+        reset();
+        setTimeout(reset, 50);
+        setTimeout(reset, 200);
+      }
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () {
+        var ae = document.activeElement;
+        if (!ae || ae.tagName !== 'INPUT') reset();
+      });
+    }
   }
 
   // ---- Initialize ----
@@ -66,6 +207,9 @@ var UI = (function () {
     initSetupSeats();
     bindEvents();
     createFloatingSuits();
+    installViewportHandlers();
+    blockPinchZoom();
+    installKeyboardScrollReset();
     // Apply saved suit-style preference before any rendering happens
     var savedStyle = SaveSystem.getSuitStyle();
     if (Renderer && Renderer.setSuitStyle) Renderer.setSuitStyle(savedStyle);
@@ -78,7 +222,7 @@ var UI = (function () {
     setupSeats = [];
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
       setupSeats.push({
-        occupied: false, animal: null, name: '', isHuman: false, isDealer: false
+        occupied: false, animal: null, name: '', isHuman: false
       });
     }
   }
@@ -106,6 +250,20 @@ var UI = (function () {
 
   function applySuitStyleToDom(style) {
     document.documentElement.setAttribute('data-suit-style', style);
+
+    // Keep DOM suit colors (hand bar, legend, rules text) in lockstep with
+    // the canvas card faces: laser mode pulls from the active pip schemes,
+    // classic mode falls back to the stylesheet defaults (red/black).
+    var rootStyle = document.documentElement.style;
+    var suits = ['hearts', 'diamonds', 'spades', 'clubs'];
+    for (var i = 0; i < suits.length; i++) {
+      if (style === 'laser') {
+        rootStyle.setProperty('--suit-' + suits[i], LaserPips.getSuitColor(suits[i]));
+      } else {
+        rootStyle.removeProperty('--suit-' + suits[i]);
+      }
+    }
+
     updateSuitStackLegend(style);
     updateRulesText(style);
   }
@@ -142,15 +300,11 @@ var UI = (function () {
 
   function suitToken(suit, style) {
     if (style === 'laser') return inlineLaserPipHtml(suit);
-    var sym = { clubs: '&clubs;', spades: '&spades;', hearts: '&hearts;', diamonds: '&diams;' };
-    return '<strong class="suit-' + suit + '">' + sym[suit] + '</strong>';
+    return '<strong class="suit-' + suit + '">' + CardSystem.SUIT_SYMBOLS[suit] + '</strong>';
   }
 
   function suitName(suit, style, plural) {
-    if (typeof LaserPips !== 'undefined') return LaserPips.getLabel(suit, style, plural);
-    var p = { clubs: 'Clubs', spades: 'Spades', hearts: 'Hearts', diamonds: 'Diamonds' };
-    var s = { clubs: 'Club', spades: 'Spade', hearts: 'Heart', diamonds: 'Diamond' };
-    return (plural ? p : s)[suit];
+    return LaserPips.getLabel(suit, style, plural);
   }
 
   function updateRulesText(style) {
@@ -210,6 +364,24 @@ var UI = (function () {
     if (id !== 'screen-game' && canvasReady) {
       Renderer.stopLoop();
     }
+
+    // View-mode classes only apply while the game screen is up
+    updateLayoutMode();
+
+    if (id === 'screen-title') updateContinueButton();
+  }
+
+  // Show Continue on the title screen when a resumable game exists
+  function updateContinueButton() {
+    var btn = document.getElementById('btn-continue');
+    if (!btn) return;
+    if (SaveSystem.hasSave()) {
+      var sub = document.getElementById('continue-sub');
+      if (sub) sub.textContent = SaveSystem.timeAgo(SaveSystem.getSaveTimestamp());
+      btn.style.display = '';
+    } else {
+      btn.style.display = 'none';
+    }
   }
 
   // ---- Floating Suit Particles ----
@@ -233,6 +405,9 @@ var UI = (function () {
     // Title screen
     document.getElementById('btn-play').addEventListener('click', function () {
       enterSetup();
+    });
+    document.getElementById('btn-continue').addEventListener('click', function () {
+      resumeGame();
     });
     document.getElementById('btn-how-to-play').addEventListener('click', function () {
       showScreen('screen-rules');
@@ -267,10 +442,6 @@ var UI = (function () {
       showScreen('screen-title');
     });
     document.getElementById('btn-deal').addEventListener('click', startGame);
-
-    // Player count buttons (hidden but kept for structure)
-    document.getElementById('btn-fewer').addEventListener('click', function () {});
-    document.getElementById('btn-more').addEventListener('click', function () {});
 
     // Character picker
     document.getElementById('btn-picker-cancel').addEventListener('click', closePicker);
@@ -330,12 +501,12 @@ var UI = (function () {
     showScreen('screen-game');
 
     document.getElementById('setup-header').style.display = '';
-    document.getElementById('player-count-control').style.display = 'none'; // Always 4
     document.getElementById('btn-deal').style.display = '';
     document.getElementById('game-hud').style.display = 'none';
     document.getElementById('suit-stack').style.display = 'none';
     document.getElementById('trick-info').style.display = 'none';
     document.getElementById('hand-bar').style.display = 'none';
+    document.getElementById('bid-overlay').style.display = 'none';
 
     var canvasEl = document.getElementById('game-canvas');
     var ready;
@@ -352,23 +523,8 @@ var UI = (function () {
       var felt = document.querySelector('#screen-game .table-felt');
       if (felt) felt.style.display = 'none';
 
-      Renderer.startLoop(function () {
-        Renderer.hideDeckCount();
-      });
-
-      if (!resizeListenerAdded) {
-        window.addEventListener('resize', function () {
-          if (canvasReady && document.getElementById('screen-game').classList.contains('active')) {
-            Renderer.resize();
-            if (gamePhase === 'setup') {
-              renderSetupSeats();
-            } else {
-              positionGameOverlays();
-            }
-          }
-        });
-        resizeListenerAdded = true;
-      }
+      // Keep the loop running for particles/flying cards even with no game callback
+      Renderer.startLoop(function () {});
 
       prepareSetupScreen();
     });
@@ -380,9 +536,36 @@ var UI = (function () {
     title.textContent = 'Game Setup';
 
     playerCount = 4;
-    autoFillSeats();
+    if (!applySavedSetup()) autoFillSeats();
     renderSetupSeats();
     updateDealButton();
+  }
+
+  // Restore the last game's seat config (characters, names, human/AI)
+  // instead of randomizing every time. Returns false if none/invalid.
+  function applySavedSetup() {
+    var saved = SaveSystem.loadSetup();
+    if (!saved || !saved.length) return false;
+    var animals = SpriteEngine.getAnimalList();
+    var applied = 0;
+    initSetupSeats();
+    addOrder = [];
+    for (var i = 0; i < saved.length; i++) {
+      var s = saved[i];
+      if (!s || typeof s.seatIndex !== 'number' || !s.animal) continue;
+      if (s.seatIndex < 0 || s.seatIndex >= NUM_TABLE_SEATS) continue;
+      if (animals.indexOf(s.animal) === -1) continue;
+      setupSeats[s.seatIndex] = {
+        occupied: true,
+        animal: s.animal,
+        name: s.name || getAnimalName(s.animal),
+        isHuman: !!s.isHuman
+      };
+      addOrder.push(s.seatIndex);
+      applied++;
+    }
+    if (applied !== 4) { initSetupSeats(); addOrder = []; return false; }
+    return true;
   }
 
   function getRandomAnimal() {
@@ -393,8 +576,9 @@ var UI = (function () {
     return available[Math.floor(Math.random() * available.length)];
   }
 
+  // AI seat names come from the sprite engine's per-animal nickname pools
   function getAnimalName(animalId) {
-    return ANIMAL_NICKNAMES[animalId] || SpriteEngine.getAnimalName(animalId);
+    return SpriteEngine.pickNickname(animalId);
   }
 
   function autoFillSeats() {
@@ -421,12 +605,20 @@ var UI = (function () {
 
     var positions;
     if (canvasReady) {
-      positions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
+      positions = Renderer.getSeatPositions(NUM_TABLE_SEATS); // setup ring (bigger avatars)
     } else {
+      // Pre-canvas fallback: identical tangent-orbit math, DOM-side
       var table = ring.parentElement;
-      var w = table.offsetWidth;
-      var h = table.offsetHeight;
-      positions = Animations.getSeatPositions(w, h, NUM_TABLE_SEATS);
+      var w = table.offsetWidth || window.innerWidth;
+      var h = table.offsetHeight || window.innerHeight;
+      var vm = Math.min(w, h) / 100;
+      var orbit = (28 + 2.5 + 5.2) * vm; // felt + wood + setup avatar radius
+      var cx = w / 2, cy = h / 2 - 4 * vm;
+      positions = [];
+      for (var s = 0; s < NUM_TABLE_SEATS; s++) {
+        var ang = (Math.PI / 2) + (s * 2 * Math.PI / NUM_TABLE_SEATS);
+        positions.push({ x: cx + orbit * Math.cos(ang), y: cy + orbit * Math.sin(ang), angle: ang });
+      }
     }
 
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
@@ -594,6 +786,7 @@ var UI = (function () {
   function startGame() {
     var players = [];
     var id = 0;
+    var setupToSave = [];
 
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
       if (setupSeats[i].occupied) {
@@ -601,13 +794,22 @@ var UI = (function () {
           id, i,
           setupSeats[i].animal,
           setupSeats[i].name,
-          setupSeats[i].isHuman,
-          false // no dealer
+          setupSeats[i].isHuman
         );
         players.push(p);
         id++;
+        setupToSave.push({
+          seatIndex: i,
+          animal: setupSeats[i].animal,
+          name: setupSeats[i].name,
+          isHuman: setupSeats[i].isHuman
+        });
       }
     }
+
+    // A new match replaces any old save; remember the table for next time
+    SaveSystem.clearSave();
+    SaveSystem.saveSetup(setupToSave);
 
     Game.setupGame(players);
     beginNewRound();
@@ -619,7 +821,6 @@ var UI = (function () {
     gamePhase = 'playing';
     showScreen('screen-game');
     document.getElementById('setup-header').style.display = 'none';
-    document.getElementById('player-count-control').style.display = 'none';
     document.getElementById('btn-deal').style.display = 'none';
     document.getElementById('game-hud').style.display = '';
     document.getElementById('suit-stack').style.display = '';
@@ -641,10 +842,16 @@ var UI = (function () {
     }).then(function () {
       Game.sortAllHands();
 
-      // Sync hand display to sorted order (all face down on canvas)
+      // Sync hand display to sorted order (all face down on canvas).
+      // The bar player's hand lives in the DOM bar, never on canvas.
       var gs = Game.getState();
+      var barId = getBarPlayerId();
       for (var i = 0; i < gs.players.length; i++) {
         var pid = gs.players[i].id;
+        if (pid === barId) {
+          handDisplay[pid] = [];
+          continue;
+        }
         if (handDisplay[pid]) {
           var sortedHand = gs.hands[pid];
           handDisplay[pid] = [];
@@ -678,7 +885,76 @@ var UI = (function () {
     }).then(function () {
       // Start bidding
       Game.startBidding();
+      SaveSystem.saveGame(); // autosave: fresh round, hands dealt
       processBidding();
+    });
+  }
+
+  // ---- Resume a saved game (Continue button) ----
+  function resumeGame() {
+    var data = SaveSystem.loadGame();
+    if (!data) { updateContinueButton(); return; }
+    Game.deserialize(data.gameState);
+
+    gamePhase = 'playing';
+    showScreen('screen-game');
+    document.getElementById('setup-header').style.display = 'none';
+    document.getElementById('btn-deal').style.display = 'none';
+    document.getElementById('game-hud').style.display = '';
+    document.getElementById('suit-stack').style.display = '';
+    document.getElementById('trick-info').style.display = '';
+    document.getElementById('hand-bar').style.display = 'none';
+    document.getElementById('bid-overlay').style.display = 'none';
+
+    updateSuitStackLegend(SaveSystem.getSuitStyle());
+
+    renderGameTable().then(function () {
+      var gs = Game.getState();
+      var barId = getBarPlayerId();
+
+      // Rebuild the canvas fans from the saved hands (face down); the bar
+      // player's hand is mirrored by the DOM bar instead
+      for (var i = 0; i < gs.players.length; i++) {
+        var pid = gs.players[i].id;
+        handDisplay[pid] = [];
+        if (pid === barId) continue;
+        var hand = gs.hands[pid] || [];
+        for (var c = 0; c < hand.length; c++) {
+          handDisplay[pid].push({ card: hand[c], faceUp: false });
+        }
+      }
+
+      // Rebuild any mid-trick cards (defensive: saves land between tricks,
+      // so this is normally empty)
+      trickDisplay = [];
+      var trick = gs.currentTrick || [];
+      for (var t = 0; t < trick.length; t++) {
+        var tp = Game.getPlayerById(trick[t].playerId);
+        if (tp) trickDisplay.push({ playerId: tp.id, card: trick[t].card, seatIndex: tp.seatIndex });
+      }
+
+      positionSuitStackAndTrickInfo();
+      updateHUD();
+      updateSuitDiagram();
+      updateAllBidDisplays();
+      updateAllTrickDisplays();
+
+      document.getElementById('hand-bar').style.display = '';
+      var humanCount = gs.players.filter(function (p) { return p.isHuman; }).length;
+
+      if (gs.roundPhase === 'bidding') {
+        if (humanCount <= 1) renderHandBar();
+        setMessage('Welcome back — bidding continues!');
+        processBidding();
+      } else if (gs.roundPhase === 'playing') {
+        if (humanCount <= 1) renderHandBar();
+        setMessage('Welcome back!');
+        gameFlowLocked = false;
+        nextTurn();
+      } else {
+        // 'finished' — the round was scored; show the results screen
+        showResults();
+      }
     });
   }
 
@@ -691,6 +967,7 @@ var UI = (function () {
       updateAllBidDisplays();
       return Animations.delay(1000).then(function () {
         Game.startPlaying();
+        SaveSystem.saveGame(); // autosave: all bids locked in
         gameFlowLocked = false;
         updateTrickInfo();
         nextTurn();
@@ -769,16 +1046,20 @@ var UI = (function () {
   function animateCanvasDeal(card, playerId, seatIndex) {
     return new Promise(function (resolve) {
       var tableCenter = Renderer.getTableCenter();
-      var seatPositions = Renderer.getSeatPositions(NUM_TABLE_SEATS);
+      var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
       var seatPos = seatPositions[seatIndex];
-      var handPos = Renderer.getHandPosition(seatPos, tableCenter);
+      var isBarPlayer = playerId === getBarPlayerId();
+      // Bar player's cards fly to the hand bar; everyone else's to their fan
+      var handPos = isBarPlayer
+        ? getHandAnchor()
+        : Renderer.getHandPosition(seatPos, tableCenter);
 
       var fc = Renderer.addFlyingCard({
         card: card,
         faceUp: false,
         x: tableCenter.x,
         y: tableCenter.y,
-        scale: 1.45
+        scale: getCardScale()
       });
 
       Renderer.animate(200, function (t) {
@@ -787,8 +1068,11 @@ var UI = (function () {
         fc.y = tableCenter.y + (handPos.y - tableCenter.y) * e;
       }, function () {
         Renderer.removeFlyingCard(fc);
-        if (!handDisplay[playerId]) handDisplay[playerId] = [];
-        handDisplay[playerId].push({ card: card, faceUp: false });
+        // The bar player's hand is mirrored by the DOM bar, not the canvas
+        if (!isBarPlayer) {
+          if (!handDisplay[playerId]) handDisplay[playerId] = [];
+          handDisplay[playerId].push({ card: card, faceUp: false });
+        }
         resolve();
       });
     });
@@ -798,14 +1082,16 @@ var UI = (function () {
   function animatePlayCard(card, playerId, seatIndex) {
     return new Promise(function (resolve) {
       var tableCenter = Renderer.getTableCenter();
-      var seatPositions = Renderer.getSeatPositions(NUM_TABLE_SEATS);
+      var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
       var seatPos = seatPositions[seatIndex];
-      var handPos = Renderer.getHandPosition(seatPos, tableCenter);
+      var handPos = playerId === getBarPlayerId()
+        ? getHandAnchor()
+        : Renderer.getHandPosition(seatPos, tableCenter);
 
-      // Trick card position (offset from center based on seat angle)
-      var trickOffset = 45;
-      var trickX = tableCenter.x + Math.cos(seatPos.angle) * trickOffset * 0.4;
-      var trickY = tableCenter.y + Math.sin(seatPos.angle) * trickOffset * 0.4;
+      // Trick card position (2vmin ring — matches drawGameFrame)
+      var trickOffset = 2 * getVmin();
+      var trickX = tableCenter.x + Math.cos(seatPos.angle) * trickOffset;
+      var trickY = tableCenter.y + Math.sin(seatPos.angle) * trickOffset;
 
       var fc = Renderer.addFlyingCard({
         card: card,
@@ -813,7 +1099,7 @@ var UI = (function () {
         flipProgress: 0,
         x: handPos.x,
         y: handPos.y,
-        scale: 1.45
+        scale: getCardScale()
       });
 
       Renderer.animate(400, function (t) {
@@ -986,8 +1272,9 @@ var UI = (function () {
     setMessage(player.name + ' plays ' + card.rank + card.symbol);
 
     return animatePlayCard(card, playerId, player.seatIndex).then(function () {
-      // Update hand bar if human
-      if (player.isHuman) renderHandBar();
+      // Refresh the bar with the player's own remaining hand (multi-human:
+      // never flash another human's cards here)
+      if (player.isHuman) renderHandBar(playerId);
 
       // Update tricks won display
       updateAllTrickDisplays();
@@ -1015,6 +1302,7 @@ var UI = (function () {
 
           updateTrickInfo();
           updateAllTrickDisplays();
+          SaveSystem.saveGame(); // autosave: stable point between tricks
 
           if (Game.isRoundFinished()) {
             endRound();
@@ -1099,20 +1387,30 @@ var UI = (function () {
       legalPlays = Game.getLegalPlays(humanPlayer.id);
     }
 
+    var laserStyle = SaveSystem.getSuitStyle() === 'laser';
+
     for (var j = 0; j < hand.length; j++) {
       var card = hand[j];
       var isLegal = legalPlays.indexOf(j) !== -1;
 
       var cardEl = document.createElement('div');
-      cardEl.className = 'hand-card suit-' + card.color;
+      cardEl.className = 'hand-card suit-' + card.suit;
       if (isLegal) {
         cardEl.classList.add('legal');
       } else if (legalPlays.length > 0) {
         cardEl.classList.add('illegal');
       }
 
+      // Laser mode draws the actual pip art in place of the Unicode symbol
+      var suitHtml = laserStyle
+        ? inlineLaserPipHtml(card.suit)
+        : card.symbol;
       cardEl.innerHTML = '<span class="hc-rank">' + card.rank + '</span>' +
-                          '<span class="hc-suit">' + card.symbol + '</span>';
+                          '<span class="hc-suit">' + suitHtml + '</span>';
+      if (laserStyle) {
+        var pipCanvas = cardEl.querySelector('canvas.inline-laser-pip');
+        if (pipCanvas) LaserPips.renderPipCanvas(pipCanvas, card.suit);
+      }
 
       cardEl.dataset.cardIndex = j;
       // Use both click and touchend for reliable iPad/iOS support
@@ -1170,19 +1468,8 @@ var UI = (function () {
       var felt = document.querySelector('#screen-game .table-felt');
       if (felt) felt.style.display = 'none';
 
-      if (!resizeListenerAdded) {
-        window.addEventListener('resize', function () {
-          if (canvasReady && document.getElementById('screen-game').classList.contains('active')) {
-            Renderer.resize();
-            if (gamePhase === 'setup') {
-              renderSetupSeats();
-            } else {
-              positionGameOverlays();
-            }
-          }
-        });
-        resizeListenerAdded = true;
-      }
+      // Game phase is live now — apply pbar/lbar before laying anything out
+      updateLayoutMode();
 
       handDisplay = {};
       trickDisplay = [];
@@ -1199,7 +1486,8 @@ var UI = (function () {
         var pos = overlayPositions[p.seatIndex];
 
         var seat = document.createElement('div');
-        seat.className = 'game-seat';
+        // Bottom seat gets its text beside the avatar (hand bar lives below)
+        seat.className = 'game-seat' + (p.seatIndex === 0 ? ' seat-bottom' : '');
         seat.dataset.player = p.id;
         seat.style.left = pos.x + 'px';
         seat.style.top = (pos.y - getGameAvatarSize() / 2) + 'px';
@@ -1239,17 +1527,40 @@ var UI = (function () {
     });
   }
 
+  // ---- Bar player: the human whose hand lives in the DOM hand bar ----
+  // Their canvas fan is suppressed (the bar IS their hand). In hot-seat
+  // games the other humans keep face-down fans at their seats.
+  function getBarPlayerId() {
+    var gs = Game.getState();
+    if (!gs || !gs.players) return null;
+    for (var i = 0; i < gs.players.length; i++) {
+      if (gs.players[i].isHuman) return gs.players[i].id;
+    }
+    return null;
+  }
+
+  // Where the bar player's cards fly to/from (the hand bar's center)
+  function getHandAnchor() {
+    var W = window.innerWidth, H = window.innerHeight;
+    return { x: W / 2, y: H - 6.6 * getVmin() };
+  }
+
   // ---- Canvas Render Callback ----
   function drawGameFrame(ctx, W, H) {
     var gs = Game.getState();
     if (!gs || !gs.players) return;
 
     var tableCenter = Renderer.getTableCenter();
-    var seatPositions = Renderer.getSeatPositions(NUM_TABLE_SEATS);
-    var cardScale = 1.2;
-    var cardSpacing = 32;
+    var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
+    var vminPx = Math.min(W, H) / 100;
+    // Proportional card sizing (30's system): same fraction of the table
+    // on every device instead of huge cards on phones.
+    var viewScale = Math.min(W, H) / 1080;
+    var cardScale = 1.1 * viewScale;
+    var cardSpacing = 28.6 * viewScale;
     var CARDS_PER_ROW = 5;
-    var ROW_INSET = 28;
+    var ROW_INSET = 26.4 * viewScale;
+    var barPlayerId = getBarPlayerId();
 
     // Draw deck pile at table center (only during dealing)
     if (gs.roundPhase === 'dealing') {
@@ -1259,6 +1570,7 @@ var UI = (function () {
     // Draw each player's hand cards on canvas (face down for all)
     for (var i = 0; i < gs.players.length; i++) {
       var p = gs.players[i];
+      if (p.id === barPlayerId) continue; // bar player's hand lives in the DOM bar
 
       var seatPos = seatPositions[p.seatIndex];
       var handPos = Renderer.getHandPosition(seatPos, tableCenter);
@@ -1295,13 +1607,14 @@ var UI = (function () {
       }
     }
 
-    // Draw trick cards in center
+    // Draw trick cards in center (2vmin ring keeps the pile compact and
+    // clear of every hand fan)
     for (var t = 0; t < trickDisplay.length; t++) {
       var td = trickDisplay[t];
       var tdSeatPos = seatPositions[td.seatIndex];
-      var trickOffset = 55;
-      var trickX = tableCenter.x + Math.cos(tdSeatPos.angle) * trickOffset * 0.4;
-      var trickY = tableCenter.y + Math.sin(tdSeatPos.angle) * trickOffset * 0.4;
+      var trickOffset = 2 * vminPx;
+      var trickX = tableCenter.x + Math.cos(tdSeatPos.angle) * trickOffset;
+      var trickY = tableCenter.y + Math.sin(tdSeatPos.angle) * trickOffset;
       var trickRotation = tdSeatPos.angle - Math.PI / 2;
 
       Renderer.drawCard(trickX, trickY, td.card, true, trickRotation, cardScale, 0.3);
@@ -1328,14 +1641,26 @@ var UI = (function () {
   }
 
   function positionSuitStackAndTrickInfo() {
-    var tableCenter = Renderer.getTableCenter();
-    var tableR = Renderer.getTableRadii().rx;
-
-    // Vertical reference for the right-side trick counter (~25% from top of felt)
-    var targetY = tableCenter.y - tableR * 0.5;
-
-    // Suit hierarchy legend sits directly above the left player's avatar
     var suitStack = document.getElementById('suit-stack');
+    var trickInfo = document.getElementById('trick-info');
+
+    // In pbar/lbar the mode CSS owns these panels — clear the inline
+    // positions JS set in the default layout so the stylesheet wins.
+    if (document.body.classList.contains('pbar-active') ||
+        document.body.classList.contains('lbar-active')) {
+      if (suitStack) { suitStack.style.left = ''; suitStack.style.top = ''; }
+      if (trickInfo) { trickInfo.style.left = ''; trickInfo.style.top = ''; }
+      return;
+    }
+
+    var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
+    var avatarHalf = getGameAvatarSize() / 2;
+    var vmin = getVmin();
+    var breathingRoom = 1.5 * vmin; // gap between panel bottom and avatar top
+    var minTop = 0.8 * vmin;        // minimum space from top of viewport
+
+    // Suit hierarchy legend sits directly above the LEFT player's avatar
+    // (seat 2 of the 8-slot ring; the 4-player layout uses slots 0/2/4/6)
     if (suitStack) {
       var wasHidden = suitStack.style.display === 'none';
       if (wasHidden) suitStack.style.visibility = 'hidden';
@@ -1345,19 +1670,13 @@ var UI = (function () {
       if (wasHidden) suitStack.style.display = 'none';
       if (wasHidden) suitStack.style.visibility = '';
 
-      // Left seat is index 2 of the 8-seat ring (4-player layout uses seats 0/2/4/6)
-      var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
       var leftSeat = seatPositions[2];
-      var avatarHalf = getGameAvatarSize() / 2;
-      var breathingRoom = 18; // gap between legend bottom and avatar top
-      var minTop = 8;         // minimum space from top of viewport
-
       suitStack.style.left = (leftSeat.x - ssW / 2) + 'px';
       suitStack.style.top = Math.max(minTop, leftSeat.y - avatarHalf - breathingRoom - ssH) + 'px';
     }
 
-    // Stack counter on the right side, vertically centered with suit diagram middle
-    var trickInfo = document.getElementById('trick-info');
+    // Stack counter mirrors it above the RIGHT player's avatar (seat 6),
+    // keeping the felt center clear for the trick pile
     if (trickInfo) {
       var wasHidden2 = trickInfo.style.display === 'none';
       if (wasHidden2) trickInfo.style.visibility = 'hidden';
@@ -1367,8 +1686,9 @@ var UI = (function () {
       if (wasHidden2) trickInfo.style.display = 'none';
       if (wasHidden2) trickInfo.style.visibility = '';
 
-      trickInfo.style.left = (tableCenter.x + tableR * 0.65 - tiW / 2) + 'px';
-      trickInfo.style.top = (targetY - tiH / 2) + 'px';
+      var rightSeat = seatPositions[6];
+      trickInfo.style.left = (rightSeat.x - tiW / 2) + 'px';
+      trickInfo.style.top = Math.max(minTop, rightSeat.y - avatarHalf - breathingRoom - tiH) + 'px';
     }
   }
 
@@ -1455,6 +1775,10 @@ var UI = (function () {
 
   function setMessage(msg) {
     document.getElementById('hud-message').textContent = msg;
+    // Portrait mode mirrors the message just above the hand bar, where the
+    // player is actually looking (the top HUD is far away on a tall phone)
+    var pbarMsg = document.getElementById('pbar-message');
+    if (pbarMsg) pbarMsg.textContent = msg;
   }
 
   // ================================================================

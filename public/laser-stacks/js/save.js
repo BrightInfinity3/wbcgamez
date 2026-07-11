@@ -10,11 +10,14 @@ var SaveSystem = (function () {
   var SETUP_KEY = 'laser_stacks_setup';
   var OPTIONS_KEY = 'laser_stacks_options';
   var DEFAULT_OPTIONS = { suitStyle: 'classic' };
+  // v2: card/player shapes slimmed in the 2026 overhaul (no card.value/
+  // card.color, no dealer fields) — older saves are ignored, not migrated.
+  var SAVE_VERSION = 2;
 
   function saveGame() {
     try {
       var data = {
-        version: 1,
+        version: SAVE_VERSION,
         gameState: Game.serialize(),
         timestamp: Date.now()
       };
@@ -29,7 +32,7 @@ var SaveSystem = (function () {
       var raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return null;
       var data = JSON.parse(raw);
-      if (data.version !== 1) return null;
+      if (data.version !== SAVE_VERSION) return null;
       return data;
     } catch (e) {
       console.warn('Load failed:', e);
@@ -42,7 +45,7 @@ var SaveSystem = (function () {
       var raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return false;
       var data = JSON.parse(raw);
-      return data && data.version === 1 && data.gameState && data.gameState.roundPhase !== 'idle';
+      return data && data.version === SAVE_VERSION && data.gameState && data.gameState.roundPhase !== 'idle';
     } catch (e) {
       return false;
     }
