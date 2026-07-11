@@ -785,10 +785,17 @@ var Renderer = (function () {
 
   function resize() {
     if (!app || !app.renderer) return;
-    // Use window dimensions directly. The canvas parent can briefly report 0
-    // during CSS screen transitions, which would render the table blank.
-    var newW = window.innerWidth;
-    var newH = window.innerHeight;
+    // Size the bitmap from the canvas parent's CLIENT box so canvas pixels
+    // and DOM overlay pixels share one coordinate space. On iPad Safari,
+    // window.innerHeight includes the collapsing URL-bar zone while the
+    // layout viewport doesn't — sizing from window.inner* there squashed
+    // the drawn table vertically under the CSS box, so the top/bottom
+    // avatars floated off the wood while left/right stayed tangent.
+    // Fall back to window.inner* if the parent briefly reports 0 during
+    // CSS screen transitions.
+    var parent = app.canvas.parentElement;
+    var newW = (parent && parent.clientWidth) || window.innerWidth;
+    var newH = (parent && parent.clientHeight) || window.innerHeight;
     if (newW === 0 || newH === 0) return;
     W = newW;
     H = newH;
@@ -1074,18 +1081,6 @@ var Renderer = (function () {
     return Math.min(W, H) / 100;
   }
 
-  // Layout mode: 'default' or 'lbar' (short landscape ≤500px tall).
-  // lbar shrinks the felt and lifts the center so the rem-sized hand
-  // bar + home-indicator safe area still fit below the bottom avatar.
-  var layoutMode = 'default';
-  function setLayoutMode(mode) {
-    var m = (mode === 'lbar') ? 'lbar' : 'default';
-    if (m === layoutMode) return;
-    layoutMode = m;
-    updateTableTexture(); // felt radius changed — re-render the table
-  }
-  function getLayoutMode() { return layoutMode; }
-
   // Wood border thickness (proportional for a consistent look)
   function getWoodBorder() {
     return 2.5 * getVmin();
@@ -1094,15 +1089,14 @@ var Renderer = (function () {
   function getTableCenter() {
     // Shifted UP (30 shifts down 1.5vmin): Laser Stacks spends its bottom
     // band on the DOM hand-bar, so the table yields space at the bottom.
-    var lift = (layoutMode === 'lbar') ? 5.5 : 4;
-    return { x: W / 2, y: H / 2 - lift * getVmin() };
+    return { x: W / 2, y: H / 2 - 4 * getVmin() };
   }
 
   // Felt radius 28vmin (30 uses 32) — the difference is the hand-bar's home.
   //   28vmin felt + 2.5vmin wood = 30.5vmin outer radius.
   //   Avatar tangent: orbit = 30.5 + 3.9 = 34.4vmin.
   function getTableRadii() {
-    var r = ((layoutMode === 'lbar') ? 26 : 28) * getVmin();
+    var r = 28 * getVmin();
     return { rx: r, ry: r };
   }
 
@@ -1185,8 +1179,6 @@ var Renderer = (function () {
     getSeatPositions: getSeatPositions,
     getHandPosition: getHandPosition,
     getSeatOverlayPositions: getSeatOverlayPositions,
-    setLayoutMode: setLayoutMode,
-    getLayoutMode: getLayoutMode,
     setSuitStyle: setSuitStyle,
     getSuitStyle: getSuitStyle,
     getSuitColor: getSuitColor,

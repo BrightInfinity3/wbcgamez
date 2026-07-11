@@ -57,37 +57,19 @@ var UI = (function () {
     return 1.1 * (Math.min(W, H) / 1080);
   }
 
-  // ---- View modes (30's mbar/lbar concept, adapted) ----
+  // ---- View mode (round-3 simplification) ----
+  // One proportional layout everywhere; the only responsive extra is the
+  // pbar-active class, which shows the #pbar-message pill in the thumb
+  // zone on portrait phones. The old lbar mode (shrunken felt, relocated
+  // legend/counter) is gone — MK wants every screen to look the same.
   function isMobilePortrait() {
     return window.matchMedia('(orientation: portrait) and (max-width: 480px)').matches;
   }
-  function isShortLandscape() {
-    return window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
-  }
 
-  // Applies/removes the pbar (portrait) and lbar (short landscape) body
-  // classes and tells the renderer which table size to use. Runs on every
-  // viewport change and screen switch.
   function updateLayoutMode() {
     var inGame = gamePhase === 'playing' &&
       document.getElementById('screen-game').classList.contains('active');
-    var pbar = inGame && isMobilePortrait();
-    var lbar = inGame && isShortLandscape();
-
-    var wasPbar = document.body.classList.contains('pbar-active');
-    var wasLbar = document.body.classList.contains('lbar-active');
-    document.body.classList.toggle('pbar-active', pbar);
-    document.body.classList.toggle('lbar-active', lbar);
-
-    if (canvasReady && Renderer.setLayoutMode) {
-      Renderer.setLayoutMode(lbar ? 'lbar' : 'default');
-    }
-
-    // Mode changed: the legend's pixel size changed, so its pip canvases
-    // must be re-rendered at the new resolution.
-    if ((pbar !== wasPbar || lbar !== wasLbar) && inGame) {
-      updateSuitStackLegend(SaveSystem.getSuitStyle());
-    }
+    document.body.classList.toggle('pbar-active', inGame && isMobilePortrait());
   }
 
   // ---- Unified viewport-change handler (ported from 30) ----
@@ -98,7 +80,6 @@ var UI = (function () {
   function handleViewportChange() {
     if (!canvasReady) return;
     if (!document.getElementById('screen-game').classList.contains('active')) return;
-    // Mode first — lbar changes the felt radius the resize renders with.
     updateLayoutMode();
     Renderer.resize();
     // iPad keyboard fix: when a seat-name INPUT has focus, the
@@ -1501,7 +1482,7 @@ var UI = (function () {
       var felt = document.querySelector('#screen-game .table-felt');
       if (felt) felt.style.display = 'none';
 
-      // Game phase is live now — apply pbar/lbar before laying anything out
+      // Game phase is live now — apply the portrait message mode
       updateLayoutMode();
 
       handDisplay = {};
@@ -1655,26 +1636,32 @@ var UI = (function () {
 
     // Reposition suit diagram and trick counter above their respective players
     positionSuitStackAndTrickInfo();
+
+    // Legend pip canvases render at their CSS pixel size — refresh them
+    // so a resize doesn't leave them blurry (they're vmin-sized).
+    if (gamePhase === 'playing') {
+      updateSuitStackLegend(SaveSystem.getSuitStyle());
+    }
   }
 
+  // Positions the suit legend above the LEFT avatar and the stack
+  // counter above the RIGHT avatar — same rule on every screen size.
   function positionSuitStackAndTrickInfo() {
     var suitStack = document.getElementById('suit-stack');
     var trickInfo = document.getElementById('trick-info');
-
-    // In pbar/lbar the mode CSS owns these panels — clear the inline
-    // positions JS set in the default layout so the stylesheet wins.
-    if (document.body.classList.contains('pbar-active') ||
-        document.body.classList.contains('lbar-active')) {
-      if (suitStack) { suitStack.style.left = ''; suitStack.style.top = ''; }
-      if (trickInfo) { trickInfo.style.left = ''; trickInfo.style.top = ''; }
-      return;
-    }
 
     var seatPositions = Renderer.getSeatOverlayPositions(NUM_TABLE_SEATS);
     var avatarHalf = getGameAvatarSize() / 2;
     var vmin = getVmin();
     var breathingRoom = 1.5 * vmin; // gap between panel bottom and avatar top
-    var minTop = 0.8 * vmin;        // minimum space from top of viewport
+    // Never ride up into the HUD: on short-landscape phones the rem
+    // floors make the panels taller than pure vmin proportions, so the
+    // above-the-avatar spot can run out of headroom. Trading away the
+    // breathing room (sliding down toward the avatar) beats overlapping
+    // the HUD text.
+    var hud = document.querySelector('.game-hud');
+    var hudBottom = hud ? hud.getBoundingClientRect().bottom : 0;
+    var minTop = Math.max(0.8 * vmin, hudBottom + 0.5 * vmin);
 
     // Suit hierarchy legend sits directly above the LEFT player's avatar
     // (seat 2 of the 8-slot ring; the 4-player layout uses slots 0/2/4/6)
@@ -2143,12 +2130,22 @@ var UI = (function () {
       el.style.top = (pos.y - nameRowOffset - getSetupAvatarSize() / 2) + 'px';
       el.dataset.seat = i;
 
-      // Editable name on top (own seats only)
+      // Seat interaction rules (MK's round-3 spec):
+      //  * Your own seat: rename + character picker.
+      //  * Host on an AI seat: rename + character picker (until dealing).
+      //  * Guest on an AI seat: tap anywhere to SIT there (claim_seat) —
+      //    moving frees their previous seat back to AI.
+      //  * A guest's seat is theirs alone — the host can't touch it.
+      var mine = seat.deviceId === myDeviceId;
+      var editable = mine || (isHost && seat.isAI);
+      var claimable = !isHost && seat.isAI;
+
+      // Editable name on top
       var nameEl = document.createElement('div');
       nameEl.className = 'seat-name';
       nameEl.textContent = seat.name;
       nameEl.dataset.seat = i;
-      if (seat.deviceId === myDeviceId) {
+      if (editable) {
         nameEl.addEventListener('click', (function (idx) {
           return function (e) {
             e.stopPropagation();
@@ -2158,7 +2155,7 @@ var UI = (function () {
       }
       el.appendChild(nameEl);
 
-      // Avatar — click opens the animal picker for whoever controls it
+      // Avatar — picker if you control the persona, claim if sittable
       var avatar = document.createElement('div');
       avatar.className = 'seat-avatar';
       if (seat.animal) {
@@ -2166,33 +2163,52 @@ var UI = (function () {
         avatar.querySelector('img').style.width = '100%';
         avatar.querySelector('img').style.height = '100%';
       }
-      if (seat.deviceId === myDeviceId) {
+      if (editable) {
         avatar.style.cursor = 'pointer';
         avatar.addEventListener('click', (function (idx) {
           return function () { openOnlineAnimalPicker(idx); };
         })(i));
+      } else if (claimable) {
+        avatar.style.cursor = 'pointer';
+        avatar.addEventListener('click', (function (idx) {
+          return function () { Online.requestSeat(idx); };
+        })(i));
       }
       el.appendChild(avatar);
 
-      // Controller badge below the avatar. Host can click it to
-      // reassign the seat to AI / themselves / any connected joiner.
+      // Controller badge below the avatar. Host clicks it to reassign
+      // AI/host-owned seats; guests click AI badges to sit there.
       var badge = document.createElement('div');
       badge.className = 'lobby-controller-badge';
       if (seat.isAI) {
         badge.classList.add('ai');
-        badge.textContent = 'AI';
+        badge.textContent = claimable ? 'AI · sit here' : 'AI';
       } else {
         var dev = lobbyState.devices[seat.deviceId];
         badge.classList.add('human');
         badge.textContent = dev ? dev.username : '?';
       }
       if (isHost) {
+        if (seat.isAI || mine) {
+          badge.style.cursor = 'pointer';
+          badge.title = 'Click to change who controls this player';
+          badge.addEventListener('click', (function (idx) {
+            return function (e) {
+              e.stopPropagation();
+              openReassignPopup(idx);
+            };
+          })(i));
+        } else {
+          badge.title = 'This seat belongs to ' + badge.textContent +
+            ' — only they can move';
+        }
+      } else if (claimable) {
         badge.style.cursor = 'pointer';
-        badge.title = 'Click to change who controls this player';
+        badge.title = 'Click to sit here';
         badge.addEventListener('click', (function (idx) {
           return function (e) {
             e.stopPropagation();
-            openReassignPopup(idx);
+            Online.requestSeat(idx);
           };
         })(i));
       }
@@ -2231,12 +2247,15 @@ var UI = (function () {
     });
   }
 
-  // Host-only: pick who controls a seat — AI, the host, or any joiner
+  // Host-only: pick who controls a seat — AI, the host, or an UNSEATED
+  // joiner. Seated guests never appear (only they can move themselves),
+  // and the popup won't open on a guest-held seat at all.
   function openReassignPopup(seatIdx) {
     if (!Online.isActive() || !Online.isHost()) return;
     var lobbyState = Online.getLobbyState();
     var seat = lobbyState.seats[seatIdx];
     if (!seat || !seat.occupied) return;
+    if (seat.deviceId && seat.deviceId !== Online.getMyDeviceId()) return;
 
     var overlay = document.getElementById('reassign-overlay');
     if (!overlay) return;
@@ -2285,8 +2304,16 @@ var UI = (function () {
 
     addOption('AI', 'Computer', 'ai');
     var devices = lobbyState.devices;
+    function deviceHasSeat(pid) {
+      return lobbyState.seats.some(function (s) {
+        return s.occupied && s.deviceId === pid;
+      });
+    }
     Object.keys(devices).forEach(function (pid) {
       var dev = devices[pid];
+      // Guests already holding a seat move themselves — offering them
+      // here would let the host yank them around.
+      if (pid !== myDeviceId && deviceHasSeat(pid)) return;
       var tag = pid === myDeviceId ? 'Host' : 'Player';
       var label = (dev.username || 'Player') + (pid === myDeviceId ? ' (you)' : '');
       addOption(tag, label, pid);

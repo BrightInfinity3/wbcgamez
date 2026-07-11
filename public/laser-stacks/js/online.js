@@ -536,6 +536,9 @@ var Online = (function () {
       case 'swap_seat':
         handleRemoteSwapSeat(fromPeerId, message.data);
         break;
+      case 'claim_seat':
+        claimSeatFor(fromPeerId, message.data && message.data.seatIndex);
+        break;
       case 'player_action':
         handleRemoteAction(message.data);
         break;
@@ -1088,24 +1091,64 @@ var Online = (function () {
   // `controller` is one of:
   //   'ai'             — seat plays via AI
   //   a peerId string  — that device controls the seat
+  // MK's lobby rules (2026-07 round 3): a seat held by a GUEST belongs
+  // to that guest — the host can never reassign it (no kicking). Guests
+  // move themselves via claim_seat. One seat per device: assigning a
+  // device to a seat frees any other seat it held back to AI.
   function assignSeatController(seatIdx, controller) {
     if (!_isHost) return;
     var seat = lobbyState.seats[seatIdx];
     if (!seat || !seat.occupied) return;
+    // Guest-held seats are locked to that guest
+    if (seat.deviceId && seat.deviceId !== myDeviceId) return;
     if (controller === 'ai') {
       seat.isAI = true;
       seat.isHuman = false;
       seat.deviceId = null;
+      updateLivePlayerForSeat(seatIdx, null, true);
+      afterSeatChange();
     } else {
       // peerId — must be a known device.
       if (!lobbyState.devices[controller]) return;
-      seat.isAI = false;
-      seat.isHuman = true;
-      seat.deviceId = controller;
+      claimSeatFor(controller, seatIdx);
+      return; // claimSeatFor broadcasts + renders
     }
-    // Mirror onto the live Game player record so turn routing updates
-    // immediately (without waiting for a new round).
-    updateLivePlayerForSeat(seatIdx, seat.deviceId, seat.isAI);
+  }
+
+  // Give `deviceId` control of seat `seatIdx` (host applies this for its
+  // own popup choices AND for guests' claim_seat requests). Validates
+  // that the target seat is claimable: AI-held, or the device's own.
+  function claimSeatFor(deviceId, seatIdx) {
+    if (!_isHost) return;
+    if (typeof seatIdx !== 'number') return;
+    var seat = lobbyState.seats[seatIdx];
+    if (!seat || !seat.occupied) return;
+    if (!lobbyState.devices[deviceId]) return;
+    if (seat.deviceId === deviceId) return; // already theirs
+    // Only AI seats (or a host-owned seat being given away by the host
+    // via the popup) are claimable — never another device's seat.
+    if (seat.deviceId && seat.deviceId !== myDeviceId) return;
+
+    // Free the device's previous seat back to AI (one seat per device)
+    for (var i = 0; i < NUM_SEATS; i++) {
+      var other = lobbyState.seats[i];
+      if (i !== seatIdx && other.occupied && other.deviceId === deviceId) {
+        other.deviceId = null;
+        other.isAI = true;
+        other.isHuman = false;
+        updateLivePlayerForSeat(i, null, true);
+      }
+    }
+
+    seat.deviceId = deviceId;
+    seat.isAI = false;
+    seat.isHuman = true;
+    updateLivePlayerForSeat(seatIdx, deviceId, false);
+    afterSeatChange();
+  }
+
+  // Shared post-change bookkeeping for seat-controller updates
+  function afterSeatChange() {
     broadcastLobbyState();
     // During game, also push the full game state so each guest's
     // local Game.players reflects the new deviceId — without this, a
@@ -1116,6 +1159,12 @@ var Online = (function () {
     }
     renderOnlineLobby();
     if (typeof onHostAutoPlayCallback === 'function') onHostAutoPlayCallback();
+  }
+
+  // ---- Guest: ask the host for control of an AI seat ----
+  function requestSeat(seatIdx) {
+    if (_isHost) return;
+    Network.send('host', { type: 'claim_seat', data: { seatIndex: seatIdx } });
   }
 
   // ---- Host: Remove a player/AI from a seat ----
@@ -1350,10 +1399,14 @@ var Online = (function () {
     });
   }
 
-  // ---- Guest: Change own player's name ----
+  // ---- Change a seat's name ----
+  // Host: own or AI seats only (a guest's persona is theirs).
+  // Guest: routed to the host, which validates ownership.
   function sendChangeName(seatIndex, name) {
     if (_isHost) {
-      lobbyState.seats[seatIndex].name = name;
+      var seatN = lobbyState.seats[seatIndex];
+      if (!seatN || (seatN.deviceId && seatN.deviceId !== myDeviceId)) return;
+      seatN.name = name;
       broadcastLobbyState();
       renderOnlineLobby();
     } else {
@@ -1364,14 +1417,17 @@ var Online = (function () {
     }
   }
 
-  // ---- Guest: Change own player's animal ----
+  // ---- Change a seat's character ----
+  // Host: own or AI seats only. Guest: own seat, validated by the host.
   function sendChangeAnimal(seatIndex, animal) {
     if (_isHost) {
+      var seatA = lobbyState.seats[seatIndex];
+      if (!seatA || (seatA.deviceId && seatA.deviceId !== myDeviceId)) return;
       var taken = lobbyState.seats.some(function (s, idx) {
         return s.occupied && s.animal === animal && idx !== seatIndex;
       });
       if (taken) return;
-      lobbyState.seats[seatIndex].animal = animal;
+      seatA.animal = animal;
       broadcastLobbyState();
       renderOnlineLobby();
     } else {
@@ -1679,6 +1735,7 @@ var Online = (function () {
     addPlayer: addPlayer,
     removeFromSeat: removeFromSeat,
     assignSeatController: assignSeatController,
+    requestSeat: requestSeat,
     swapSeats: swapSeats,
     startOnlineGame: startOnlineGame,
     sendAction: sendAction,
