@@ -50,11 +50,11 @@ var UI = (function () {
   function getGameAvatarSize() {
     return 7.8 * getVmin(); // matches .game-seat-avatar CSS
   }
-  // Card scale for flying/deal animations — same formula as drawGameFrame
-  // so cards never change size mid-flight. Reference: 1080p desktop.
+  // Card scale for flying/deal animations — same formula AND basis as
+  // drawGameFrame (layout viewport, not window.inner*) so cards never
+  // change size mid-flight. Reference: 1080p desktop.
   function getCardScale() {
-    var W = window.innerWidth, H = window.innerHeight;
-    return 1.1 * (Math.min(W, H) / 1080);
+    return 1.1 * (getVmin() * 100 / 1080);
   }
 
   // ---- View mode (round-3 simplification) ----
@@ -110,7 +110,12 @@ var UI = (function () {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
         debounceTimer = null;
-        var w = window.innerWidth, h = window.innerHeight;
+        // Compare the LAYOUT viewport (same basis as getVmin/renderer),
+        // not window.inner* — on iPad Safari the URL-bar collapse can
+        // move one without the other, and a swallowed event here means
+        // Renderer.resize() never corrects the canvas (vertical squash).
+        var w = document.documentElement.clientWidth || window.innerWidth;
+        var h = document.documentElement.clientHeight || window.innerHeight;
         if (w === lastW && h === lastH) return; // no-op if nothing changed
         lastW = w; lastH = h;
         handleViewportChange();
@@ -194,6 +199,9 @@ var UI = (function () {
 
   // ---- Initialize ----
   function init() {
+    // Build stamp — matches the title-screen .build-tag; a device
+    // logging an older number is running a cached build.
+    console.log('[LaserStacks] build v2.3');
     initSetupSeats();
     bindEvents();
     bindOnlineEvents();
@@ -1376,6 +1384,18 @@ var UI = (function () {
         }
       }
     }
+    // ONLINE: this bar is THIS device's private surface. Hands are
+    // full-state-synced to every device, so rendering any other seat's
+    // hand here leaks their cards — override whatever the caller asked
+    // for with the local device's own player (bar stays empty for
+    // unseated observers).
+    if (Online.isActive()) {
+      var myDevId = Online.getMyDeviceId();
+      humanPlayer = null;
+      for (var d = 0; d < gs.players.length; d++) {
+        if (gs.players[d].deviceId === myDevId) { humanPlayer = gs.players[d]; break; }
+      }
+    }
     if (!humanPlayer) return;
 
     var hand = Game.getHand(humanPlayer.id);
@@ -1515,6 +1535,18 @@ var UI = (function () {
         var avatarWrap = document.createElement('div');
         avatarWrap.className = 'game-seat-avatar';
         avatarWrap.appendChild(SpriteEngine.createSpriteImg(p.animal));
+        // Host recovery hatch: mid-game, the host can tap a seat to
+        // reassign it (AI / host / unseated joiner). openReassignPopup
+        // refuses seats held by connected guests, so this only ever
+        // touches AI seats, the host's own, or orphaned seats whose
+        // device dropped (page refresh) — no kicking live players.
+        if (Online.isActive() && Online.isHost()) {
+          avatarWrap.style.pointerEvents = 'auto';
+          avatarWrap.style.cursor = 'pointer';
+          avatarWrap.addEventListener('click', (function (seatIdx) {
+            return function () { openReassignPopup(seatIdx); };
+          })(p.seatIndex));
+        }
         topRow.appendChild(avatarWrap);
 
         seat.appendChild(topRow);
@@ -2054,6 +2086,11 @@ var UI = (function () {
     document.getElementById('btn-online-deal').style.display = 'none';
     document.getElementById('lobby-waiting').style.display = 'none';
     document.getElementById('join-requests').style.display = 'none';
+    // The big lobby seats must never survive into the playing phase —
+    // renderGameTable rebuilds the ring, but there's a window between
+    // game_starting and deal_round where they'd linger over the table.
+    var ring = document.getElementById('seats-ring');
+    if (ring) ring.innerHTML = '';
   }
 
   // ---- Online lobby (renders on the game screen's canvas table) ----
@@ -2117,8 +2154,6 @@ var UI = (function () {
     var lobbyState = Online.getLobbyState();
     var myDeviceId = Online.getMyDeviceId();
     var isHost = Online.isHost();
-    var nameRowOffset = 2 * getVmin();
-
     for (var i = 0; i < NUM_TABLE_SEATS; i++) {
       var seat = lobbyState.seats[i];
       if (!seat || !seat.occupied) continue;
@@ -2127,7 +2162,10 @@ var UI = (function () {
       var el = document.createElement('div');
       el.className = 'seat';
       el.style.left = pos.x + 'px';
-      el.style.top = (pos.y - nameRowOffset - getSetupAvatarSize() / 2) + 'px';
+      // Top is set AFTER append: the name row sits above the avatar, so
+      // the avatar's offset inside the column must be MEASURED — a fixed
+      // vmin estimate left the top/bottom avatars visibly off the wood
+      // (the name's rem-floored height doesn't track vmin).
       el.dataset.seat = i;
 
       // Seat interaction rules (MK's round-3 spec):
@@ -2215,6 +2253,9 @@ var UI = (function () {
       el.appendChild(badge);
 
       ring.appendChild(el);
+      // Measured placement: land the avatar center exactly on the orbit
+      // point regardless of how tall the name row rendered.
+      el.style.top = (pos.y - avatar.offsetTop - getSetupAvatarSize() / 2) + 'px';
     }
   }
 
@@ -2248,14 +2289,17 @@ var UI = (function () {
   }
 
   // Host-only: pick who controls a seat — AI, the host, or an UNSEATED
-  // joiner. Seated guests never appear (only they can move themselves),
-  // and the popup won't open on a guest-held seat at all.
+  // joiner. Seats held by CONNECTED guests never open here (only they
+  // can move themselves) — but a seat whose device dropped or left
+  // (page refresh, closed tab) is recoverable, in lobby AND mid-game,
+  // so one dead device can't freeze the table.
   function openReassignPopup(seatIdx) {
     if (!Online.isActive() || !Online.isHost()) return;
     var lobbyState = Online.getLobbyState();
     var seat = lobbyState.seats[seatIdx];
     if (!seat || !seat.occupied) return;
-    if (seat.deviceId && seat.deviceId !== Online.getMyDeviceId()) return;
+    if (seat.deviceId && seat.deviceId !== Online.getMyDeviceId() &&
+        Online.isDeviceActive(seat.deviceId)) return;
 
     var overlay = document.getElementById('reassign-overlay');
     if (!overlay) return;
@@ -2311,6 +2355,8 @@ var UI = (function () {
     }
     Object.keys(devices).forEach(function (pid) {
       var dev = devices[pid];
+      // Only connected devices can take a seat
+      if (pid !== myDeviceId && !Online.isDeviceActive(pid)) return;
       // Guests already holding a seat move themselves — offering them
       // here would let the host yank them around.
       if (pid !== myDeviceId && deviceHasSeat(pid)) return;

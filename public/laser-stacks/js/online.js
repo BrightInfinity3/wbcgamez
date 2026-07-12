@@ -1099,9 +1099,12 @@ var Online = (function () {
     if (!_isHost) return;
     var seat = lobbyState.seats[seatIdx];
     if (!seat || !seat.occupied) return;
-    // Guest-held seats are locked to that guest
-    if (seat.deviceId && seat.deviceId !== myDeviceId) return;
+    // Seats held by CONNECTED guests are locked to that guest; a seat
+    // whose device dropped or left is recoverable.
+    if (seat.deviceId && seat.deviceId !== myDeviceId &&
+        isDeviceActive(seat.deviceId)) return;
     if (controller === 'ai') {
+      releaseSeatFromPendingLeave(seatIdx, seat.deviceId);
       seat.isAI = true;
       seat.isHuman = false;
       seat.deviceId = null;
@@ -1125,9 +1128,12 @@ var Online = (function () {
     if (!seat || !seat.occupied) return;
     if (!lobbyState.devices[deviceId]) return;
     if (seat.deviceId === deviceId) return; // already theirs
-    // Only AI seats (or a host-owned seat being given away by the host
-    // via the popup) are claimable — never another device's seat.
-    if (seat.deviceId && seat.deviceId !== myDeviceId) return;
+    // Claimable: AI seats, a host-owned seat given away via the popup,
+    // and seats orphaned by a dropped/departed device — never a seat
+    // held by a CONNECTED guest.
+    if (seat.deviceId && seat.deviceId !== myDeviceId &&
+        isDeviceActive(seat.deviceId)) return;
+    releaseSeatFromPendingLeave(seatIdx, seat.deviceId);
 
     // Free the device's previous seat back to AI (one seat per device)
     for (var i = 0; i < NUM_SEATS; i++) {
@@ -1145,6 +1151,43 @@ var Online = (function () {
     seat.isHuman = true;
     updateLivePlayerForSeat(seatIdx, deviceId, false);
     afterSeatChange();
+  }
+
+  // A seat manually reassigned by the host no longer needs a decision
+  // in the device-leave modal — drop it there so the modal (or a later
+  // grace-expiry) doesn't fight the host's explicit choice.
+  function releaseSeatFromPendingLeave(seatIdx, deviceId) {
+    if (!deviceId || !pendingLeaves[deviceId]) return;
+    var p = pendingLeaves[deviceId];
+    p.seats = p.seats.filter(function (s) { return s !== seatIdx; });
+    delete p.decisions[seatIdx];
+    if (p.seats.length === 0) {
+      delete pendingLeaves[deviceId];
+      // Device kept no seats — if it's already gone/leaving, drop the
+      // record entirely so it stops counting toward the lobby.
+      var dev = lobbyState.devices[deviceId];
+      if (dev && (dev.paused || dev.leaving)) delete lobbyState.devices[deviceId];
+    }
+    renderDeviceLeaveModal();
+  }
+
+  // Safety net: any seat pointing at a device that no longer exists in
+  // the room reverts to AI. Covers cleanup paths that delete a device
+  // record without re-routing its seats (e.g. cascade host migration).
+  function sweepOrphanSeats() {
+    if (!_isHost) return false;
+    var changed = false;
+    for (var i = 0; i < NUM_SEATS; i++) {
+      var seat = lobbyState.seats[i];
+      if (seat.occupied && seat.deviceId && !lobbyState.devices[seat.deviceId]) {
+        seat.deviceId = null;
+        seat.isAI = true;
+        seat.isHuman = false;
+        updateLivePlayerForSeat(i, null, true);
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   // Shared post-change bookkeeping for seat-controller updates
@@ -1193,6 +1236,7 @@ var Online = (function () {
   // ---- Host: Start the game ----
   function startOnlineGame() {
     if (!_isHost) return;
+    if (sweepOrphanSeats()) broadcastLobbyState();
     if (totalPlayerCount() !== MAX_PLAYERS) return;
 
     gamePhase = 'playing';
@@ -1405,7 +1449,8 @@ var Online = (function () {
   function sendChangeName(seatIndex, name) {
     if (_isHost) {
       var seatN = lobbyState.seats[seatIndex];
-      if (!seatN || (seatN.deviceId && seatN.deviceId !== myDeviceId)) return;
+      if (!seatN || (seatN.deviceId && seatN.deviceId !== myDeviceId &&
+          isDeviceActive(seatN.deviceId))) return;
       seatN.name = name;
       broadcastLobbyState();
       renderOnlineLobby();
@@ -1422,7 +1467,8 @@ var Online = (function () {
   function sendChangeAnimal(seatIndex, animal) {
     if (_isHost) {
       var seatA = lobbyState.seats[seatIndex];
-      if (!seatA || (seatA.deviceId && seatA.deviceId !== myDeviceId)) return;
+      if (!seatA || (seatA.deviceId && seatA.deviceId !== myDeviceId &&
+          isDeviceActive(seatA.deviceId))) return;
       var taken = lobbyState.seats.some(function (s, idx) {
         return s.occupied && s.animal === animal && idx !== seatIndex;
       });
@@ -1703,6 +1749,14 @@ var Online = (function () {
     return lobbyState.seats[seatIdx] && lobbyState.seats[seatIdx].deviceId === myDeviceId;
   }
 
+  // Is a device present AND connected? Seats held by inactive devices
+  // (grace-period drop, page refresh, departed) are recoverable by the
+  // host — the no-kick rule only protects live guests.
+  function isDeviceActive(pid) {
+    var dev = lobbyState.devices[pid];
+    return !!(dev && !dev.paused && !dev.leaving);
+  }
+
   // Is a remote device currently paused (screen-off, dropped, etc.)?
   // During game, the host plays AI for these players' turns.
   function isDevicePaused(deviceId) {
@@ -1768,6 +1822,7 @@ var Online = (function () {
     isMyPlayer: isMyPlayer,
     isMySeat: isMySeat,
     isDevicePaused: isDevicePaused,
+    isDeviceActive: isDeviceActive,
     shouldHostAutoPlay: shouldHostAutoPlay,
     onHostAutoPlay: onHostAutoPlay,
     renderDeviceLeaveModal: renderDeviceLeaveModal,

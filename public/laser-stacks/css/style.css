@@ -291,6 +291,20 @@ html, body {
   100% { opacity: 0; transform: translateY(-10vh) rotate(360deg); }
 }
 
+/* Build tag — bottom corner of the title screen. Bump per deploy so a
+   device showing the old number is provably running a cached build. */
+.build-tag {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 0.8rem);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.6rem);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  opacity: 0.6;
+  z-index: 3;
+  pointer-events: none;
+}
+
 /* ---------- Rules Screen ---------- */
 #screen-rules {
   background: rgba(10, 15, 12, 0.97);
@@ -482,7 +496,7 @@ html, body {
 
 .seat {
   position: absolute;
-  width: 26vmin;
+  width: max(26vmin, 9rem);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -531,11 +545,12 @@ html, body {
 
 .seat-name {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  /* 2.6vmin = 1.3rem on a 800px-min desktop */
+  font-size: max(2.6vmin, 0.85rem);
   color: var(--text-light);
   margin-top: 3px;
   text-align: center;
-  max-width: 180px;
+  max-width: max(22.5vmin, 9rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -549,7 +564,7 @@ html, body {
 /* Inline name editing */
 .seat-name-input {
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: max(2.6vmin, 0.85rem);
   color: var(--gold-light);
   background: rgba(0, 0, 0, 0.6);
   border: 1px solid var(--gold-dim);
@@ -557,8 +572,8 @@ html, body {
   padding: 1px 4px;
   margin-top: 3px;
   text-align: center;
-  max-width: 180px;
-  width: 160px;
+  max-width: max(22.5vmin, 9rem);
+  width: max(20vmin, 9rem);
   outline: none;
 }
 
@@ -1424,8 +1439,12 @@ body.pbar-active #pbar-message { display: block; }
    room code sits just below the Round label (30 anchors bottom-up) */
 .hud-room-row {
   position: absolute;
-  top: calc(max(0.8vmin, env(safe-area-inset-top, 0px)) + 4.4vmin);
-  left: calc(50% - 30vmin + 20px);
+  /* Anchors just below the Round label: the HUD box is
+     max(60vmin, 24rem) wide with a ~2.9rem-tall button row, so both
+     offsets need the same rem floors or the row drifts into the HUD
+     message on phones. */
+  top: calc(max(0.8vmin, env(safe-area-inset-top, 0px)) + max(4.4vmin, 2.9rem));
+  left: calc(50% - max(30vmin, 12rem) + 20px);
   display: flex;
   align-items: center;
   gap: 0.4vmin;
@@ -1433,13 +1452,13 @@ body.pbar-active #pbar-message { display: block; }
   pointer-events: auto;
 }
 .hud-room-row .hud-label {
-  font-size: 1.6vmin;
+  font-size: max(1.6vmin, 0.6rem);
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 .hud-room-row .lobby-code {
-  font-size: 1.6vmin;
+  font-size: max(1.6vmin, 0.6rem);
   padding: 0.1vmin 0.55vmin;
 }
 
@@ -1569,11 +1588,12 @@ body.pbar-active #pbar-message { display: block; }
    gold so it stands out against the dark felt. */
 .lobby-waiting {
   position: absolute;
-  top: calc(50% - 10vmin);
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5vmin);
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   font-family: var(--font-display);
-  font-size: 2.4vmin;
+  font-size: max(2.4vmin, 0.85rem);
   color: var(--gold-light);
   text-align: center;
   z-index: 30;
