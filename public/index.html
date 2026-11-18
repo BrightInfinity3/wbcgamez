@@ -233,6 +233,10 @@
       transform: scale(1.4);
     }
 
+    .card-icon canvas.word5-canvas {
+      transform: scale(1.55);
+    }
+
     .moregames-emoji {
       display: block;
       font-size: 54px;
@@ -357,6 +361,12 @@
       --card-accent: #f43f85;
       --card-glow: rgba(244, 63, 133, 0.14);
       --card-icon-bg: linear-gradient(135deg, rgba(244, 63, 133, 0.18), rgba(168, 35, 90, 0.10));
+    }
+
+    .card.word5 {
+      --card-accent: #60a5fa;
+      --card-glow: rgba(59, 130, 246, 0.16);
+      --card-icon-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.20), rgba(30, 58, 138, 0.10));
     }
 
     /* === COMING SOON CARDS === */
@@ -515,6 +525,26 @@
         </p>
         <div class="card-tags">
           <span class="tag">Card Game</span>
+          <span class="tag">Multiplayer</span>
+        </div>
+        <div class="card-play">
+          Play Now <span class="arrow">&rarr;</span>
+        </div>
+      </a>
+
+      <!-- WORD5 -->
+      <a href="/word5/" class="card word5">
+        <div class="card-header">
+          <div class="card-icon">
+            <canvas id="word5-icon" class="word5-canvas" width="48" height="48"></canvas>
+          </div>
+          <h2 class="card-title">Word5</h2>
+        </div>
+        <p class="card-desc">
+          Discover the 5-letter word in 5 guesses. Play solo, pass-and-play, or send words to friends with shareable links.
+        </p>
+        <div class="card-tags">
+          <span class="tag">Word Game</span>
           <span class="tag">Multiplayer</span>
         </div>
         <div class="card-play">
@@ -1007,6 +1037,48 @@
       }
 
       x.restore();
+    })();
+
+    // Draw Word5 icon — a row of 5 solid blue tiles spelling WORD5 (the
+    // winning-row look: every letter correct). Waits for web fonts so the
+    // letters render in Inter instead of a fallback face.
+    (function() {
+      const c = document.getElementById('word5-icon');
+      if (!c) return;
+      const x = c.getContext('2d');
+
+      const blue = '#3b82f6';
+      const ts = 8;            // tile size
+      const gap = 1;           // tile gap
+      const totalW = ts * 5 + gap * 4;
+      const startX = (48 - totalW) / 2;
+      const ty = 20;
+      const tileR = 1.6;
+
+      function drawTile(tx, letter) {
+        x.fillStyle = blue;
+        x.shadowColor = blue;
+        x.shadowBlur = 3;
+        x.beginPath();
+        x.roundRect(tx, ty, ts, ts, tileR);
+        x.fill();
+        x.shadowBlur = 0;
+        x.fillStyle = '#fff';
+        x.font = '700 5.4px "Inter", sans-serif';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(letter, tx + ts/2, ty + ts/2 + 0.4);
+      }
+
+      function draw() {
+        x.clearRect(0, 0, 48, 48);
+        ['W', 'O', 'R', 'D', '5'].forEach(function(letter, i) {
+          drawTile(startX + i * (ts + gap), letter);
+        });
+      }
+
+      draw();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
     })();
 
   </script>
