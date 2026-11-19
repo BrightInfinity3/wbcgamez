@@ -7186,13 +7186,36 @@ function tickUi() {
 //     second review: there the tap after a flick was still lost). Chrome sends them uncancelable
 //     under the card reveal's dimming overlay, which covers the panel, so on a touch screen that
 //     is hidden while it is not dimming (YT1: css/game.css);
-//   - a finger lifted while moving flings the list: it goes on at the finger's speed over its last
-//     SUMMARY_DRAG.track ms, slowing by SUMMARY_DRAG.decel px/ms every ms (on the screen) to a
-//     stop, or stopping at an end. A finger that rested SUMMARY_DRAG.still ms before it lifted, or
-//     moved slower than SUMMARY_DRAG.minSpeed, does not fling, and none starts faster than
-//     SUMMARY_DRAG.maxSpeed. Chrome's own fling over the rows slows in the same way: flicks of 0.3,
-//     0.6, 1.25 and 2.5 px/ms carried the list 20, 76, 294 and 1156 px on from the release (at
-//     1400 x 900), and these numbers carry it 19, 75, 301 and 1203 px;
+//   - a finger lifted while moving flings the list: it goes on at the finger's speed at its last
+//     place, read over its places in the SUMMARY_DRAG.track ms up to that one, slowing by
+//     SUMMARY_DRAG.decel px/ms every ms (on the screen) to a stop, or stopping at an end. A finger
+//     that rested SUMMARY_DRAG.still ms before it lifted, or moved slower than
+//     SUMMARY_DRAG.minSpeed, does not fling, and none starts faster than SUMMARY_DRAG.maxSpeed.
+//     Chrome's own fling over the rows slows in the same way: flicks of 0.3, 0.6, 1.25 and 2.5
+//     px/ms carried the list 20, 76, 294 and 1156 px on from the release (at 1400 x 900), and
+//     these numbers carry it 19, 75, 301 and 1203 px. Its speed is read from the places Chrome
+//     reads its own from over the rows:
+//       - every place the finger was counts, those a browser hands over inside one move too (its
+//         coalesced events: Chrome sends a move a frame), and a drag that started with its last
+//         move reads its speed from the last place before it started, as Chrome's speed counts
+//         the moves within its slop (code LT1 of the live check: on a tablet a flick of 3 moves
+//         of 13 px sometimes did not fling, and ones of 2 moves of 10 or 13 px never did, where
+//         over the rows they carried the list 145 and 250 px; now 153 and 264);
+//       - a rest of SUMMARY_DRAG.gap ms between two places starts the speed afresh (code WC1 of
+//         the short-flick fix's review: a single move after the finger rested 50 ms where it
+//         came down flung, where over the rows it did not), where the browser hands its places
+//         over. One that hands none over (Chrome, Firefox and Safari on a page that is not a
+//         secure context, as one served over plain http from a LAN address: localhost,
+//         127.0.0.1 and file:// are secure; Safari before 18.2 everywhere) merges a busy
+//         moment's moves into one, so there a gap can be a stall, and the speed is read through
+//         it, back to SUMMARY_DRAG.track ms (VC1 of the fix's second review: there a flick
+//         through a stall stopped dead). DevTools' touch emulation from the mouse gives Chrome
+//         samples of a still finger that never reach the page, so there the rows glide on after
+//         a rest where this does not (VT1 of the second review);
+//       - the speed runs up to the finger's last place, not to the lift, which a touch screen can
+//         report a sample or more after it (WT1: a short flick lifted 8 ms after its last move
+//         went half as far as over the rows, where Chrome's fling is the same for any lift up to
+//         its own rest limit);
 //   - a touch anywhere on the page or a click on the body stops a fling, as a touch stops the
 //     browser's (one off the body left the list gliding on through a pinch on the field: code XC1
 //     of the third review), and so do a wheel step over the body, the list moved any other way
@@ -7204,9 +7227,19 @@ function tickUi() {
 //     rows. A pen's drag keeps its events on the body (pointer capture, which a finger has of
 //     itself), and a move with nothing pressed ends a drag: a pen lifted off the body, its up
 //     sent elsewhere, left the drag running, and its hover then scrolled the list (code ZD3).
-// One difference stays: at an end of a list that can scroll, a drag over the rows goes on to pan
-// the page, where the page can pan (zoomed in, or wider than the screen), and one over the rest
-// of the body moves nothing, as the browser does not pan up or down there.
+// Differences stay. At an end of a list that can scroll, a drag over the rows goes on to pan the
+// page, where the page can pan (zoomed in, or wider than the screen), and one over the rest of the
+// body moves nothing, as the browser does not pan up or down there. Over the rows a finger that
+// rested up to about 80 ms before it lifted still flings (WT2 of the short-flick fix's review).
+// And Chrome reads its speed from a curve fitted through the finger's places of its last 100 ms,
+// where this reads it from two of them: a flick that speeds up or slows down, or a short one after
+// a rest where the finger jittered, can glide from half as far to some thirty times as far here (a
+// move of 20 px after the finger jittered 1 px every 8 ms: 65 list px over the rows, 2092 here, on
+// a list of 500 waves; a run's 26 scroll about 79). On Android, in a WebView or in Chrome after its
+// own input thread stalled 40 ms or more, the browser hands the page a batch of the finger's
+// samples as one place, stamped with its first sample's time, where Chrome's own speed counts each
+// sample: a flick lifted right after such a stall does not fling here, where over the rows it does
+// (UC1 of the fix's third review; rare: the game's own busy moments do not cause it).
 //
 // Two guards keep the later clicks of a double-click (or a triple-click) from doing what nobody
 // asked for, where its first click changed what is under the pointer (review of the page stage,
@@ -7228,10 +7261,11 @@ function tickUi() {
 //
 // The drag over the Run summary's body, in px and ms of the finger on the screen (above): how far
 // it moves before the list follows (slop), how long it may rest before it lifts and still fling
-// (still), the time its speed at the release is read over (track), the slowest release that
-// flings and the fastest a fling starts (minSpeed, maxSpeed, px/ms), and how fast a fling slows
-// (decel, px/ms lost every ms).
-const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, minSpeed: 0.05, maxSpeed: 8, decel: 0.0025 };
+// (still), the time its speed is read over, up to its last place (track), how long a rest between
+// two of its places starts that speed afresh (gap, as Chrome's over the rows: rests of 39 ms or
+// less kept it, ones of 41 ms or more did not), the slowest release that flings and the fastest a
+// fling starts (minSpeed, maxSpeed, px/ms), and how fast a fling slows (decel, px/ms lost every ms).
+const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, gap: 40, minSpeed: 0.05, maxSpeed: 8, decel: 0.0025 };
 {
   const on = (id, fn) => document.getElementById(id).addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   let closedByButton = false;   // a Close button closed its panel, and the field has had no click of its own since
@@ -7284,14 +7318,17 @@ const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, minSpeed: 0.05, maxSpeed
   // the drag under way, or null: { id: its pointer, list, x0, y0: where the finger came down, y:
   // where it was at the last move, aim: where the list is to be (unrounded; null until the drag
   // starts, past the slop), top: the list's scrollTop as the drag left it, scale, zoom, moves:
-  // [[time, y], ...] of its last SUMMARY_DRAG.track ms }
+  // [[time, y, handed], ...] of its last SUMMARY_DRAG.track ms (handed: the browser handed that
+  // move's places over), last: [time, y] of the finger's last place before the drag started
+  // (where it came down, or a move within the slop) }
   let drag = null;
   body.addEventListener('pointerdown', e => {
     fling = null;
     drag = null;
     if (e.pointerType === 'mouse' || !e.isPrimary || e.target.closest('.summary-table tbody')) return;
     const list = listNow();
-    if (list) drag = { id: e.pointerId, list, x0: e.clientX, y0: e.clientY, y: e.clientY, aim: null, top: 0, scale: scaleOf(body), zoom: zoomOf(), moves: [] };
+    if (list) drag = { id: e.pointerId, list, x0: e.clientX, y0: e.clientY, y: e.clientY, aim: null, top: 0, scale: scaleOf(body), zoom: zoomOf(), moves: [],
+      last: [e.timeStamp, e.clientY] };
     // a pen's events stay on the body until it lifts, wherever it goes (a finger's do of themselves)
     if (drag && e.pointerType === 'pen' && body.setPointerCapture) body.setPointerCapture(e.pointerId);
   });
@@ -7300,21 +7337,29 @@ const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, minSpeed: 0.05, maxSpeed
     if (!d || e.pointerId !== d.id) return;
     if (!(e.buttons & 1)) { drag = null; return; }       // nothing pressed: a hover, the drag's up missed
     if (listNow() !== d.list) { drag = null; return; }   // the table was written anew
-    if (d.aim === null) {
-      const dx = (e.clientX - d.x0) * d.zoom, dy = (e.clientY - d.y0) * d.zoom, far = Math.hypot(dx, dy);
-      if (far < SUMMARY_DRAG.slop) return;
-      if (Math.abs(dx) > Math.abs(dy)) { drag = null; return; }
-      // the drag starts where the finger left the slop's circle: the rest of this move scrolls
-      d.aim = d.top = d.list.scrollTop;
-      d.y = d.y0 + (e.clientY - d.y0) * SUMMARY_DRAG.slop / far;
-    }
-    if (d.list.scrollTop !== d.top) d.aim = d.list.scrollTop;   // moved some other way meanwhile: on from there
+    if (d.aim !== null && d.list.scrollTop !== d.top) d.aim = d.list.scrollTop;   // moved some other way meanwhile: on from there
     const end = Math.max(d.list.scrollHeight - d.list.clientHeight, 0);
-    d.aim = Math.min(Math.max(d.aim - (e.clientY - d.y) / d.scale, 0), end);
-    d.y = e.clientY;
+    // each place the finger was since the last move, in order: a browser may hand several over in
+    // one move, the others as its coalesced events; one that hands none over (as for a script's
+    // move) gives the move's own place, and a gap before it is no rest (below)
+    const each = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+    const handed = each.length > 0;
+    for (const p of handed ? each : [e]) {
+      if (d.aim === null) {
+        const dx = (p.clientX - d.x0) * d.zoom, dy = (p.clientY - d.y0) * d.zoom, far = Math.hypot(dx, dy);
+        if (far < SUMMARY_DRAG.slop) { d.last = [p.timeStamp, p.clientY]; continue; }
+        if (Math.abs(dx) > Math.abs(dy)) { drag = null; return; }
+        // the drag starts where the finger left the slop's circle: the rest of this move scrolls
+        d.aim = d.top = d.list.scrollTop;
+        d.y = d.y0 + (p.clientY - d.y0) * SUMMARY_DRAG.slop / far;
+      }
+      d.aim = Math.min(Math.max(d.aim - (p.clientY - d.y) / d.scale, 0), end);
+      d.y = p.clientY;
+      d.moves.push([p.timeStamp, p.clientY, handed]);
+    }
+    if (d.aim === null) return;
     d.list.scrollTop = d.aim;
     d.top = d.list.scrollTop;
-    d.moves.push([e.timeStamp, e.clientY]);
     while (d.moves.length > 2 && d.moves[0][0] < e.timeStamp - SUMMARY_DRAG.track) d.moves.shift();
   });
   body.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
@@ -7341,11 +7386,19 @@ const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, minSpeed: 0.05, maxSpeed
     if (!d || e.pointerId !== d.id) return;
     drag = null;
     if (d.aim === null || listNow() !== d.list) return;   // a tap, or the table went
-    // the finger's speed over its last SUMMARY_DRAG.track ms, page px per ms (+ down the screen),
-    // none if it rested before it lifted
+    // the finger's speed at its last place, page px per ms (+ down the screen), none if it rested
+    // before it lifted: from the first of its places in the SUMMARY_DRAG.track ms up to its last,
+    // back to a rest between two (the speed starts afresh after one); or, for a drag that started
+    // with its last move, from the last place before the drag, unless that came more than
+    // SUMMARY_DRAG.track ms before it or the finger rested there. A rest: a gap of
+    // SUMMARY_DRAG.gap ms before a place the browser handed over (one that hands none over may
+    // have merged a busy moment's moves into the place: above)
     const t = e.timeStamp, last = d.moves[d.moves.length - 1];
-    const first = d.moves.find(m => m[0] >= t - SUMMARY_DRAG.track) || last;
-    const v = t - last[0] <= SUMMARY_DRAG.still && t > first[0] ? (e.clientY - first[1]) / (t - first[0]) : 0;
+    const rest = (a, b) => b[2] && b[0] - a[0] >= SUMMARY_DRAG.gap;
+    let i = d.moves.length - 1;
+    while (i > 0 && d.moves[i - 1][0] >= last[0] - SUMMARY_DRAG.track && !rest(d.moves[i - 1], d.moves[i])) i--;
+    const first = d.moves.length === 1 && d.last[0] >= last[0] - SUMMARY_DRAG.track && !rest(d.last, last) ? d.last : d.moves[i];
+    const v = t - last[0] <= SUMMARY_DRAG.still && last[0] > first[0] ? (last[1] - first[1]) / (last[0] - first[0]) : 0;
     const speed = Math.min(Math.abs(v) * d.zoom, SUMMARY_DRAG.maxSpeed);
     if (speed < SUMMARY_DRAG.minSpeed) return;
     // the list's px per ms at the start (+ down the list), and per ms² lost
