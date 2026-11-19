@@ -7,6 +7,14 @@
 <title>WBC DEFENDER</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* The body clips the game, not the window. html's overflow goes to the window, so the body keeps
+     its own overflow. The page is then never wider or taller than the window, however far the
+     game reaches past it. On a phone Chrome zooms a page out to fit whatever overflows it, and
+     when the device turned from sideways to upright the game, still scaled for the wide window
+     until the resize event fitted it again, reached past the narrow one: Chrome zoomed out to
+     0.85 and stayed there (js/input.js, scaleToFit). The body clips without scrolling (clip, not
+     hidden: below). */
+  html { overflow: hidden; }
   body {
     background: #050510;
     color: #e0e0e0;
@@ -20,7 +28,13 @@
        window even when the window is shorter, and scaleToFit's scale pivots on the window's
        middle, so the HUD and START WAVE stay on screen. */
     height: 100vh;
+    /* It clips what reaches past it and never scrolls: with html's own overflow hidden, a body
+       of overflow: hidden is a scroll box of its own, which a link to a part of the page (#wave-btn
+       or #info-panel in the address) or a scrollIntoView scrolled, moving the whole game off
+       its place for good, with no scrollbar to bring it back (code ZF1 of the touch branch's
+       review). A browser that has no clip keeps hidden. */
     overflow: hidden;
+    overflow: clip;
   }
 
   #game-wrapper {
@@ -162,6 +176,61 @@
     margin-top: 4px;
     padding-left: 2px;
   }
+  /* The LASERS label shares its line with the Rotate button, which turns the laser still to be
+     built, as F and a right-click on the field do (js/input.js): a touch screen has neither. The
+     line stays as tall as the POWERUPS label's, so the cards, START WAVE and the info panel sit
+     where they did before the button (tools/tests/ui-card-fit.test.js): the button, 22px tall,
+     reaches 10px over the line's top (6px over the sidebar's top edge, beside the HUD, where
+     nothing else is) and keeps 2px clear of the red card. (A line as tall as the button moved
+     all of them 8px down on every screen: code ZR1 and look LZ1 of the touch branch's review.)
+     Nothing else moves, but in a Windows contrast theme (forced colours, where the field's frame
+     has no glow) the part of the page Chrome draws as one, the sidebar and the field's frame, is
+     6px taller while the button shows, and that shifts the smoothing of its outermost screen
+     pixels by a shade (look YD1 of the second review). A keyboard focus on START WAVE, whose
+     ring reaches past the sidebar, did the same before the button.
+     The button shows only while a laser card is picked: input.js disables it otherwise, and a
+     disabled button is hidden but keeps its room. Its text is the size of the label's, and it
+     lights up as the other buttons do where a pointer can hover (not on a touch screen, where
+     :hover would stay on it after a tap); a press shows on any screen. */
+  .laser-label { display: flex; align-items: flex-start; justify-content: space-between; }
+  #rotate-btn {
+    margin: -10px 0 2px;
+    height: 22px;
+    padding: 0 8px;
+    background: #0d2240;
+    border: 1px solid #1a4a6c;
+    border-radius: 4px;
+    color: #00e5ff;
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #rotate-btn:disabled { visibility: hidden; }
+  #rotate-btn:active { background: #1b3a5c; border-color: #00e5ff; color: #fff; }
+  @media (hover: hover) {
+    #rotate-btn:hover { border-color: #00e5ff; color: #fff; }
+  }
+  /* On a touch screen a finger is wide: a tap that landed a few px under the button hit the red
+     card and put the laser down (or picked red instead of blue), and one a few px right of it hit
+     the page, whose click-off puts the laser down too (code ZR2 of the touch branch's review).
+     There the button keeps 8px clear of the red card, and its hit area (::after, whose taps are
+     the button's) covers that gap and reaches 8px past its right edge, so a tap near the button
+     turns the laser. The hit area lies over the cards (z-index): Chrome finds a card from about
+     1px over its top, and the red card, drawn after the button, took the gap's last px (code YT2
+     of the second review). Under the button's left end Chrome's touch targeting can still give a
+     tap in the gap's last px or so to the red card's name (code XT1 of the third review: a wider
+     hit area only narrows that band). The cards sit 6px lower there, which the info panel gives
+     up (tools/tests/ui-card-fit.test.js). A computer with a touch screen counts as one too, mouse
+     or not (any-pointer). */
+  @media (any-pointer: coarse) {
+    .laser-label { margin-bottom: 6px; }
+    #rotate-btn { position: relative; }
+    #rotate-btn::after { content: ''; position: absolute; top: -1px; right: -9px; bottom: -9px; left: -1px; z-index: 1; }
+  }
   /* A powerup card: its name, cost and description beside its diagram. Each card's content fits
      its min-height from the set line heights: the name (16px + 2px), the cost (14px) and two
      lines of description (2px + 2 x 12px) make 72px with the padding and border; the Beam
@@ -242,6 +311,16 @@
     12.5% { opacity: 1; }
     87.5% { opacity: 1; }
     100% { opacity: 0; }
+  }
+  /* On a touch screen the overlay is hidden while it does not dim (it is clear then: nothing
+     shows). Clear, it still lay over the Run summary for Chrome, which sent the touchmoves of a
+     drag on the verdict, the column names or the padding uncancelable: the summary's drag
+     (js/ui.js, LISTENERS) could not keep the browser out, and after a quick flick the next tap
+     was lost (code YT1 of the touch branch's second review). Only there: hidden, it changes how
+     Chrome draws the page by a shade here and there, and a mouse screen keeps its look. While it
+     dims (a card's reveal between waves, 2.4 s) that drag's touchmoves are uncancelable again. */
+  @media (any-pointer: coarse) {
+    #reveal-overlay:not(.active) { visibility: hidden; }
   }
   .powerup-card.revealing .powerup-card-inner {
     transition: transform 1.8s cubic-bezier(0.4, 0, 0.2, 1);
@@ -673,6 +752,14 @@
   .summary-line.perfect { color: #66ffa0; font-weight: bold; }
   .summary-line.missing { color: #8aa8c8; }
   .summary-table tbody { overflow-x: hidden; overflow-y: auto; margin: 0 -12px; padding: 2px 12px; }
+  /* While the wave rows can scroll (.scrolls: js/ui.js, markSummaryScrolls), a finger's drag up or
+     down over the body outside them (the line over them, the column names, the Total row, the
+     body's padding) is the page's: there the body leaves the browser only sideways pans and pinch
+     zoom, and js/ui.js (LISTENERS) scrolls the rows by the drag, with a fling. While they cannot,
+     such a drag is the browser's, which pans a zoomed page (code ZD1 of the touch branch's
+     review). The rows keep the browser's own drag: a touch-action holds only as far as the
+     nearest scroller, and the rows are one, so over them the browser pans them as before. */
+  #summary-body.scrolls { touch-action: pan-x pinch-zoom; }
   /* The keyboard focus: Tab reaches the list (a browser makes a scroller with nothing to focus in
      it keyboard-focusable), and the browser's ring round the list's box lay under the bands, over
      its top and bottom 2px: only a hook at each end of those edges and a speck at each column seam
@@ -780,7 +867,10 @@
          (js/config.js) when the game starts; the values written here only show before that. A
          card says what its item is, never how a colour fares on a metal: the hints teach that. -->
     <div id="sidebar-main">
-      <div class="powerup-label">Lasers</div>
+      <!-- The Rotate button turns the laser still to be built, as F and a right-click on the field
+           do: a touch screen has neither. It shows only while a laser card is picked (js/input.js
+           enables it then, and css/game.css hides it while it is disabled). -->
+      <div class="powerup-label laser-label">Lasers<button id="rotate-btn" type="button" title="Rotate the laser before you build it (F, or right-click the field)"><span aria-hidden="true">&#x21bb;</span> Rotate</button></div>
       <div class="tower-btn selected" data-tower="0">
         <div class="tower-text">
           <div class="tower-name" style="color:#ff4444">Red Laser</div>
@@ -5298,7 +5388,7 @@ function compositeBloom(canBlur = BLOOM_CAN_BLUR) {
 }
 </script>
 <script>
-// ui.js: HUD (with its Hints and Run summary buttons and their panels), sidebar card costs, icons and diagrams, card reveals, title and game-over screens, starting, resuming and ending a run, the laser panel, the teaching notes and the hints (HINTS: the one table of their texts), and tickUi() for the page's per-frame updates. At load it only adds the listeners of its own buttons and panels (their Esc key, the wheel over the Run summary, and two guards against the later clicks of a double- or triple-click, on REBOOT and on the field, all ahead of input.js's), so it needs config.js (its tables of hints name the PU codes), the page's markup and the canvas (render-core.js).
+// ui.js: HUD (with its Hints and Run summary buttons and their panels), sidebar card costs, icons and diagrams, card reveals, title and game-over screens, starting, resuming and ending a run, the laser panel, the teaching notes and the hints (HINTS: the one table of their texts), and tickUi() for the page's per-frame updates. At load it only adds the listeners of its own buttons and panels (their Esc key, the wheel and a finger's drag over the Run summary, and two guards against the later clicks of a double- or triple-click, on REBOOT and on the field, all ahead of input.js's), so it needs config.js (its tables of hints name the PU codes), the page's markup and the canvas (render-core.js).
 
 // Un-hide (without animation) the powerup cards already unlocked in a resumed run.
 function syncRevealedCardsInstant() {
@@ -6445,9 +6535,11 @@ const HINTS = [
     `A wave with nothing through is perfect (${PERFECT_MARK}); a perfect run has every wave perfect.` },
   // 'buttons', just before it, has said where to see what got through.
   { id: 'remedies', text: h => `When pieces get through, build ${hintRemedies(h)}.` },
-  // Esc first: with a powerup picked, a click on a laser buys it there instead.
-  { id: 'panel', text: () => `Press Esc, then click a laser to see its welds and damage, or to sell it for ${hintShare(CONFIG.SELL_MULT)} ` +
-    'of everything bought for it and build again in a better spot.' },
+  // Put down what is picked first: with a powerup picked, a click on a laser buys it there instead.
+  // Esc does that, and so does a click on the picked card, the way on a touch screen, which has no
+  // Esc (code ZR5 of the touch branch's review: the hint said only "Press Esc").
+  { id: 'panel', text: () => `Put down what you have picked (Esc, or a click on its card), then click a laser to see its welds and damage, ` +
+    `or to sell it for ${hintShare(CONFIG.SELL_MULT)} of everything bought for it and build again in a better spot.` },
   { id: 'rewards', text: h => hintRewards(h) },
   { id: 'speed', text: () => 'Each metal walks at its own speed: a fast piece crosses a laser\'s reach in a moment, a slow one stays in it ' +
     'a long time, so a beam has less time to weld a fast one.' },
@@ -6500,9 +6592,11 @@ const PAIR_SIDES = 'with their long sides touching all along';
 // What to build to turn over each card, in the order they turn over (checkPowerupReveals): a
 // laser (Diode), a laser holding all its diodes (Prism), a red and a blue laser with prisms whose
 // long sides touch all along (Combiner), a combined pair (Beam Expander). Each step names only
-// the cards before it. The first also says which way to lay the laser ('turn' says why).
+// the cards before it. The first also says which way to lay the laser ('turn' says why), and the
+// three ways to rotate it: F, a right-click on the field, and the Rotate button over the laser
+// cards, the one way on a touch screen.
 const CARD_STEPS = [
-  [PU.DIODE, () => 'Build a laser right beside the path, its long side along it (F or right-click rotates it)'],
+  [PU.DIODE, () => 'Build a laser right beside the path, its long side along it (rotate it with F, a right-click or the Rotate button)'],
   [PU.PRISM, () => `Fill a laser with all ${CONFIG.DIODE_CAP} diodes`],
   [PU.COMBINER, () => `Put a red and a blue laser, each with a prism, ${PAIR_SIDES}`],
   [PU.BE, () => 'Join a red and a blue laser with a Combiner'],
@@ -6694,23 +6788,27 @@ function hintDiodesReaching() {
   const rows = n => { let k = 0; while (k < n && (side + k) * CELL < CONFIG.DIODE_RANGE) k++; return k; };
   return { along: Math.min(TOWER_LONG * rows(TOWER_SHORT), CONFIG.DIODE_CAP), across: Math.min(TOWER_SHORT * rows(TOWER_LONG), CONFIG.DIODE_CAP) };
 }
-// The 'turn' hint: how to rotate a laser, and why it should lie along a straight
+// The 'turn' hint: how to rotate a laser (F, a right-click on the field, or the Rotate button over
+// the laser cards, the one way on a touch screen), and why it should lie along a straight
 // (hintDiodesReaching). With a laser built (the Diode card up), it also says how to mend one built
-// the wrong way round, which F cannot turn: sell it and build it again. The 'panel' hint, which
-// teaches the laser panel, comes much later (after wave 13 today; review of the page stage, H14).
+// the wrong way round, which none of them can turn: with nothing picked (a picked powerup's click
+// would buy it there), click it, sell it and build it again. It said "press Esc", a key a touch
+// screen has none of (code ZR5 of the touch branch's review); the 'panel' hint says how to put
+// down what is picked. That hint, which teaches the laser panel, comes much later (after wave 13
+// today; review of the page stage, H14).
 // It counts the diodes that reach the middle of the path, where the pieces walk, and says so:
 // stood across a straight, more of a laser's diode circles than the nearest cover the path's near
 // side, as the field draws them (a clicked diode's circle, the Diode ghost's ring), but only the
 // nearest reach the middle, so only they ever have a piece to aim at there (review of the page
 // stage, H17: the hint said only the nearest "reach the path").
 function hintRotate(h) {
-  const how = 'Press F, or right-click the field, to rotate a laser before you build it';
+  const how = 'Press F, right-click the field or use the Rotate button to rotate a laser before you build it';
   const { along, across } = hintDiodesReaching(), cap = CONFIG.DIODE_CAP;
   if (!h.upTo(PU.DIODE) || !along) return `${how}, so that its long side lies along the path.`;
   if (along <= across) return `${how}: right beside a straight, its diodes reach the middle of the path either way round.`;
   return `${how}: laid along a straight, ${along >= cap ? `all ${cap} of its diodes reach` : `${along} of its ${cap} diodes reach`} ` +
     `the middle of the path, where the pieces walk; across it, ${across ? `only the ${across} nearest do` : 'none does'}. ` +
-    `A built laser cannot rotate: press Esc, click it, sell it for ${hintShare(CONFIG.SELL_MULT)} and build it again.`;
+    `A built laser cannot rotate: with nothing picked, click it, sell it for ${hintShare(CONFIG.SELL_MULT)} and build it again.`;
 }
 // The map's spot for a pair: the free rows between its two longest straights (the sideways legs
 // of PATH_POINTS; today rows 21-24, between the straights of rows 19 and 26 at the bottom). Of
@@ -6898,6 +6996,7 @@ function openSidePanel(key) {
   panel.classList.add('show');
   const body = panel.querySelector('.sp-body');
   if (body) body.scrollTop = 0;
+  markSummaryScrolls();
   if (state.gameOver) document.getElementById('game-over').classList.add('with-panel');
 }
 // Closes the open panel; whether one was open.
@@ -6907,6 +7006,7 @@ function closeSidePanels() {
   document.getElementById('game-over').classList.remove('with-panel');
   sidePanelOpen = null;
   sidePanelHtml = '';
+  markSummaryScrolls();
   return true;
 }
 function toggleSidePanel(key) {
@@ -6921,6 +7021,20 @@ function tickSidePanels() {
   if (html === sidePanelHtml) return;
   sidePanelHtml = html;
   document.getElementById(sidePanelOpen === 'hints' ? 'hints-list' : 'summary-body').innerHTML = html;
+  markSummaryScrolls();
+}
+// The Run summary's body takes a finger's drag up or down itself (LISTENERS, at the end of this
+// file) only while its wave rows can scroll: then .scrolls (css/game.css) leaves the browser only
+// sideways pans and pinch zoom there. While they cannot (up to 22 waves of a 26-wave run), a drag
+// there is the browser's, which pans a pinch-zoomed page as a drag on the rows or the field does
+// (code ZD1 of the touch branch's review: with the body's touch-action set for every list, a drag
+// that started on the verdict, the column names or the Total row moved neither the list nor the
+// page). Read as the panel opens (once it shows: a hidden body has no size) and closes, and
+// whenever its lines are written again, a row more.
+function markSummaryScrolls() {
+  const body = document.getElementById('summary-body');
+  const list = body && body.querySelector('.summary-table tbody');
+  if (body) body.classList.toggle('scrolls', sidePanelOpen === 'summary' && !!list && list.scrollHeight > list.clientHeight);
 }
 
 // ---- The Hints panel: every hint so far, newest first ----
@@ -7046,11 +7160,53 @@ function tickUi() {
 // past it), so there steps at the list's end over the rows and over the Total row can still end a
 // device pixel or two apart. The body stays while its lines are written again, so one listener
 // serves every table it shows.
-// Only the wheel is passed on. A finger's drag scrolls the list from its rows alone, where the
-// browser takes it, with its own fling: one that starts on the line over them, the column names
-// or the Total row moves nothing (code U2, look LF2 of the S1 fix's second review, kept as it
-// is: the rows are about 85% of the body, and a drag passed on by a script would scroll without
-// the fling, stopping dead when the finger lifts).
+// A finger's drag is passed on too, with a fling (code U2, look LF2 of the S1 fix's second review,
+// left as it was until the game was made playable on a touch screen: a drag that started on the
+// line over the rows, the column names or the Total row moved nothing). Over the rows the browser
+// takes a drag itself, with its own fling. Over the rest of the body there is no scroller under
+// the finger, so while the rows can scroll (markSummaryScrolls marks the body .scrolls) the body
+// leaves the browser only sideways pans and pinch zoom there (touch-action in css/game.css: the
+// rows, a scroller, keep the browser's drag) and the pointer listeners below scroll the list as
+// the browser does over the rows (in real Chrome with touch emulation). While the rows cannot
+// scroll (up to 22 waves of a 26-wave run), a drag there is the browser's, which pans a zoomed
+// page as elsewhere (code ZD1 of the touch branch's review: it moved nothing, the list nor the
+// page). With the list to scroll:
+//   - a drag starts once the finger has moved SUMMARY_DRAG.slop px on the screen, more up or down
+//     than sideways (one more sideways is the browser's: it pans the page), and that first stretch
+//     is not scrolled, as Chrome's 15 px over the rows are not; then the list follows the finger
+//     (the page's scale, scaleToFit, and the browser's zoom taken off), stops at its ends, and
+//     moves back at once when the finger turns there. The drag's touchmoves are cancelled, so the
+//     browser runs nothing of its own: the touch-action kept it from moving the page, but after a
+//     quick flick Chrome still ran a fling of its own that moved nothing, and took the next tap
+//     anywhere on the page, for up to a second or more, as the tap that stops it (code ZD2 of the
+//     review). They are cancelled from the first, within the slop too while the finger has moved
+//     no more sideways than up or down: Chrome sends the first touchmove once the finger is past a
+//     slop of its own, shorter than this one on a phone (8 px) and in page px at a browser zoom
+//     over 100%, and a first touchmove left alone hands the touch to Chrome (code YC1 of the
+//     second review: there the tap after a flick was still lost). Chrome sends them uncancelable
+//     under the card reveal's dimming overlay, which covers the panel, so on a touch screen that
+//     is hidden while it is not dimming (YT1: css/game.css);
+//   - a finger lifted while moving flings the list: it goes on at the finger's speed over its last
+//     SUMMARY_DRAG.track ms, slowing by SUMMARY_DRAG.decel px/ms every ms (on the screen) to a
+//     stop, or stopping at an end. A finger that rested SUMMARY_DRAG.still ms before it lifted, or
+//     moved slower than SUMMARY_DRAG.minSpeed, does not fling, and none starts faster than
+//     SUMMARY_DRAG.maxSpeed. Chrome's own fling over the rows slows in the same way: flicks of 0.3,
+//     0.6, 1.25 and 2.5 px/ms carried the list 20, 76, 294 and 1156 px on from the release (at
+//     1400 x 900), and these numbers carry it 19, 75, 301 and 1203 px;
+//   - a touch anywhere on the page or a click on the body stops a fling, as a touch stops the
+//     browser's (one off the body left the list gliding on through a pinch on the field: code XC1
+//     of the third review), and so do a wheel step over the body, the list moved any other way
+//     (keys, its scrollbar), a new table and the panel closing; a second finger ends a drag
+//     wherever it lands (a pinch is the browser's: one off the body left the drag scrolling the
+//     list during the pinch, code YC4 of the second review), and so does the browser taking the
+//     touch over (pointercancel);
+//   - a mouse never drags (a mouse's drag scrolls nothing in a browser); a pen does, as over the
+//     rows. A pen's drag keeps its events on the body (pointer capture, which a finger has of
+//     itself), and a move with nothing pressed ends a drag: a pen lifted off the body, its up
+//     sent elsewhere, left the drag running, and its hover then scrolled the list (code ZD3).
+// One difference stays: at an end of a list that can scroll, a drag over the rows goes on to pan
+// the page, where the page can pan (zoomed in, or wider than the screen), and one over the rest
+// of the body moves nothing, as the browser does not pan up or down there.
 //
 // Two guards keep the later clicks of a double-click (or a triple-click) from doing what nobody
 // asked for, where its first click changed what is under the pointer (review of the page stage,
@@ -7069,6 +7225,13 @@ function tickUi() {
 //     The first click on the field that starts a count of its own (e.detail 1) ends the guard
 //     and goes on: quick taps there work, since a run of taps that starts on the field opens
 //     with e.detail 1.
+//
+// The drag over the Run summary's body, in px and ms of the finger on the screen (above): how far
+// it moves before the list follows (slop), how long it may rest before it lifts and still fling
+// (still), the time its speed at the release is read over (track), the slowest release that
+// flings and the fastest a fling starts (minSpeed, maxSpeed, px/ms), and how fast a fling slows
+// (decel, px/ms lost every ms).
+const SUMMARY_DRAG = { slop: 15, still: 40, track: 100, minSpeed: 0.05, maxSpeed: 8, decel: 0.0025 };
 {
   const on = (id, fn) => document.getElementById(id).addEventListener('click', e => { fn(e); e.currentTarget.blur(); });
   let closedByButton = false;   // a Close button closed its panel, and the field has had no click of its own since
@@ -7092,7 +7255,10 @@ function tickUi() {
   // what the last wheel step over the Run summary's body left over, in px (above), and where it
   // left the list: { list, top: its scrollTop, dpr: the device scale then }
   let wheelCarry = 0, wheelLeft = null;
+  // the fling the last drag over the body left running (below), or null
+  let fling = null;
   document.getElementById('summary-body').addEventListener('wheel', e => {
+    fling = null;   // a wheel step over the body, the rows too, stops a fling
     const list = e.currentTarget.querySelector('.summary-table tbody');
     if (!list || !e.deltaY || e.ctrlKey || e.shiftKey || e.altKey || e.metaKey || e.target.closest('.summary-table tbody')) return;
     // where the step aims (deltaY in px, or 16 px a line and the list's height a page for the
@@ -7106,10 +7272,105 @@ function tickUi() {
     wheelLeft = { list, top: got, dpr: devicePixelRatio };
     if (got !== top) e.preventDefault();
   }, { passive: false });
+
+  // A drag over the Run summary's body outside its list, and the fling after it (above). Lengths
+  // and speeds are the finger's on the screen: page px times the browser's zoom.
+  const body = document.getElementById('summary-body');
+  const listNow = () => body.querySelector('.summary-table tbody');
+  // The page's scale (scaleToFit's transform) from page px to the body's own, 1 where a browser
+  // reports no layout; and the browser's zoom (pinch zoom).
+  const scaleOf = el => { const h = el.offsetHeight, r = el.getBoundingClientRect(); return h > 0 && r.height > 0 ? r.height / h : 1; };
+  const zoomOf = () => (window.visualViewport && visualViewport.scale > 0 ? visualViewport.scale : 1);
+  // the drag under way, or null: { id: its pointer, list, x0, y0: where the finger came down, y:
+  // where it was at the last move, aim: where the list is to be (unrounded; null until the drag
+  // starts, past the slop), top: the list's scrollTop as the drag left it, scale, zoom, moves:
+  // [[time, y], ...] of its last SUMMARY_DRAG.track ms }
+  let drag = null;
+  body.addEventListener('pointerdown', e => {
+    fling = null;
+    drag = null;
+    if (e.pointerType === 'mouse' || !e.isPrimary || e.target.closest('.summary-table tbody')) return;
+    const list = listNow();
+    if (list) drag = { id: e.pointerId, list, x0: e.clientX, y0: e.clientY, y: e.clientY, aim: null, top: 0, scale: scaleOf(body), zoom: zoomOf(), moves: [] };
+    // a pen's events stay on the body until it lifts, wherever it goes (a finger's do of themselves)
+    if (drag && e.pointerType === 'pen' && body.setPointerCapture) body.setPointerCapture(e.pointerId);
+  });
+  body.addEventListener('pointermove', e => {
+    const d = drag;
+    if (!d || e.pointerId !== d.id) return;
+    if (!(e.buttons & 1)) { drag = null; return; }       // nothing pressed: a hover, the drag's up missed
+    if (listNow() !== d.list) { drag = null; return; }   // the table was written anew
+    if (d.aim === null) {
+      const dx = (e.clientX - d.x0) * d.zoom, dy = (e.clientY - d.y0) * d.zoom, far = Math.hypot(dx, dy);
+      if (far < SUMMARY_DRAG.slop) return;
+      if (Math.abs(dx) > Math.abs(dy)) { drag = null; return; }
+      // the drag starts where the finger left the slop's circle: the rest of this move scrolls
+      d.aim = d.top = d.list.scrollTop;
+      d.y = d.y0 + (e.clientY - d.y0) * SUMMARY_DRAG.slop / far;
+    }
+    if (d.list.scrollTop !== d.top) d.aim = d.list.scrollTop;   // moved some other way meanwhile: on from there
+    const end = Math.max(d.list.scrollHeight - d.list.clientHeight, 0);
+    d.aim = Math.min(Math.max(d.aim - (e.clientY - d.y) / d.scale, 0), end);
+    d.y = e.clientY;
+    d.list.scrollTop = d.aim;
+    d.top = d.list.scrollTop;
+    d.moves.push([e.timeStamp, e.clientY]);
+    while (d.moves.length > 2 && d.moves[0][0] < e.timeStamp - SUMMARY_DRAG.track) d.moves.shift();
+  });
+  body.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
+  // A drag over a list that can scroll keeps the browser out: its touchmoves are cancelled, so
+  // Chrome runs no fling of its own to take the next tap (above). Within the slop too, unless the
+  // finger has moved more sideways than up or down (then the pan may be the browser's): Chrome's
+  // first touchmove can come before the drag starts. A second finger (a pinch) has ended the drag
+  // already (below), and is the browser's. Not passive: a passive listener cancels nothing.
+  body.addEventListener('touchmove', e => {
+    const d = drag;
+    if (!d || !body.classList.contains('scrolls') || e.touches.length !== 1 || !e.cancelable) return;
+    const t = e.touches[0];
+    if (d.aim !== null || Math.abs(t.clientY - d.y0) >= Math.abs(t.clientX - d.x0)) e.preventDefault();
+  }, { passive: false });
+  // A touch anywhere stops a fling, as it stops the browser's (code XC1 of the third review),
+  // and a second finger ends a drag wherever it lands (YC4): on the body its pointerdown does
+  // both (above), and anywhere else this does, as it lands. Passive: it never holds up a pinch.
+  document.addEventListener('touchstart', e => {
+    fling = null;
+    if (e.touches.length > 1) drag = null;
+  }, { passive: true });
+  body.addEventListener('pointerup', e => {
+    const d = drag;
+    if (!d || e.pointerId !== d.id) return;
+    drag = null;
+    if (d.aim === null || listNow() !== d.list) return;   // a tap, or the table went
+    // the finger's speed over its last SUMMARY_DRAG.track ms, page px per ms (+ down the screen),
+    // none if it rested before it lifted
+    const t = e.timeStamp, last = d.moves[d.moves.length - 1];
+    const first = d.moves.find(m => m[0] >= t - SUMMARY_DRAG.track) || last;
+    const v = t - last[0] <= SUMMARY_DRAG.still && t > first[0] ? (e.clientY - first[1]) / (t - first[0]) : 0;
+    const speed = Math.min(Math.abs(v) * d.zoom, SUMMARY_DRAG.maxSpeed);
+    if (speed < SUMMARY_DRAG.minSpeed) return;
+    // the list's px per ms at the start (+ down the list), and per ms² lost
+    const from = d.list.scrollTop === d.top ? d.aim : d.list.scrollTop;
+    const f = fling = { list: d.list, from, v: -Math.sign(v) * speed / d.zoom / d.scale, a: SUMMARY_DRAG.decel / d.zoom / d.scale,
+      up: t, start: null, top: d.list.scrollTop };
+    requestAnimationFrame(function flingFrame(ts) {
+      if (fling !== f) return;
+      if (listNow() !== f.list || f.list.scrollTop !== f.top || sidePanelOpen !== 'summary') { fling = null; return; }
+      // its clock starts at the release, or a frame before this first frame where the two clocks
+      // do not agree
+      if (f.start === null) f.start = ts - f.up >= 0 && ts - f.up < 100 ? f.up : ts - 1000 / 60;
+      const stop = Math.abs(f.v) / f.a, dt = Math.min(ts - f.start, stop);
+      const aim = f.from + f.v * dt - Math.sign(f.v) * f.a * dt * dt / 2;
+      const end = Math.max(f.list.scrollHeight - f.list.clientHeight, 0);
+      f.list.scrollTop = Math.min(Math.max(aim, 0), end);
+      f.top = f.list.scrollTop;
+      if (dt >= stop || aim <= 0 || aim >= end) fling = null;
+      else requestAnimationFrame(flingFrame);
+    });
+  });
 }
 </script>
 <script>
-// input.js: mouse, keyboard and button handlers (including the upgrade panel's), what a click on the board would do with the armed laser or powerup (armedAt, which the cursor, the click and the ghosts in render-world.js all go by), the note a click short of energy puts up (clear of the ghost's label), the canvas cursor, what is armed (pickLaser, selectNothing, rotatePlacement), click-off deselect, responsive scaling. Needs the DOM and the canvas (render-core) at load: it adds the listeners and runs scaleToFit().
+// input.js: mouse, keyboard and button handlers (including the upgrade panel's and the Rotate button's), what a click on the board would do with the armed laser or powerup (armedAt, which the cursor, the click and the ghosts in render-world.js all go by), the note a click short of energy puts up (clear of the ghost's label), the canvas cursor, what is armed (pickLaser, selectNothing, rotatePlacement), click-off deselect, responsive scaling. Needs the DOM and the canvas (render-core) at load: it adds the listeners and runs scaleToFit().
 
 // ============== INPUT ==============
 // Canvas coordinates of a mouse event. The bitmap (canvas.width × canvas.height) fills the
@@ -7260,8 +7521,9 @@ canvas.addEventListener('click', (e) => {
 });
 
 // A right-click on the field turns the armed laser, like [F]. The canvas's own context menu
-// never opens, whatever is armed. (A touch screen has no right-click: there only a keyboard
-// turns the laser.) A right-click fires no 'click', so it never places anything.
+// never opens, whatever is armed. (A touch screen has neither a right-click nor a keyboard:
+// there the Rotate button turns the laser, below.) A right-click fires no 'click', so it never
+// places anything.
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const {x, y} = canvasCoords(e);
@@ -7397,6 +7659,16 @@ document.getElementById('up-buttons').addEventListener('click', (e) => {
 function clearAllSelections() {
   document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.powerup-btn').forEach(b => b.classList.remove('selected'));
+  showRotateButton(false);
+}
+
+// The Rotate button (index.html) shows while a laser card is picked, and only then: pickLaser
+// shows it, and clearAllSelections hides it, before any other pick or none. css/game.css hides it
+// while it is disabled, so a hidden button takes no click and no keyboard focus. The page opens
+// with the red card picked and the button showing (index.html), as a new run starts.
+function showRotateButton(on) {
+  const btn = document.getElementById('rotate-btn');
+  if (btn) btn.disabled = !on;
 }
 
 // ---- What the next board click does: a laser armed, a powerup armed, or nothing ----
@@ -7412,6 +7684,7 @@ function pickLaser(type) {
   if (!TOWER_DEFS[type]) return false;
   clearAllSelections();
   document.querySelector(`.tower-btn[data-tower="${type}"]`)?.classList.add('selected');
+  showRotateButton(true);
   state.selectedTower = type;
   state.selectedPowerup = PU.NONE;
   closeUpgrade();
@@ -7426,11 +7699,27 @@ function selectNothing() {
 }
 
 // Turns the laser placement between the two ORIENT codes (portrait and landscape) and shows the
-// new way round on the laser cards' icons.
+// new way round on the laser cards' icons. F, a right-click on the field and the Rotate button
+// call it.
 function rotatePlacement() {
   state.placementOrientation = isPortrait(state.placementOrientation) ? ORIENT.LANDSCAPE : ORIENT.PORTRAIT;
   drawSidebarIcons();
 }
+
+// The Rotate button turns the laser still to be built, as F does: on a touch screen, which has no
+// keyboard and no right-click, it is the one way to. It shows only while a laser card is picked
+// (showRotateButton), and turns nothing else. The card stays picked, so a click on the card still
+// puts the laser down (note 18 of the 2026-11-13 playtest), and an open laser panel stays open, as
+// with F. Like the HUD's buttons it drops the keyboard focus after its click (a Space or an Enter
+// meant for the game would press it again), and the 2nd click of a double-click (e.detail 2: the
+// browser's click count) does nothing, as on the cards: a double-click turns the laser once, where
+// two turns would bring it back as it was and look like nothing happened.
+document.getElementById('rotate-btn').addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  if (e.detail > 1 || state.selectedTower < 0) return;
+  rotatePlacement();
+  refreshCursor(); // over the field, a click may now do something else
+});
 
 // A laser card arms its laser. A click on the card of the laser already armed puts it down
 // instead: nothing armed (and an open laser panel closes, as with any card click). On every card
@@ -7577,6 +7866,23 @@ document.addEventListener('click', (e) => {
 });
 
 // ============== RESPONSIVE SCALING ==============
+// The size of the window the page is laid out in, in CSS px: the root element's clientWidth and
+// clientHeight (the initial containing block: the window less any scrollbar, and on a phone or a
+// tablet the device width its viewport meta tag asks for). Not innerWidth and innerHeight: there
+// Chrome widens the viewport those report to take in whatever overflows the page, and before its
+// first fit the game's layout box (1254 px wide unscaled) overflows a phone. Upright at 375 x 812
+// innerWidth read 814 when the game was first fitted (and 550 once it was), while clientWidth
+// stayed 375: the game was drawn at 0.579 instead of 0.232, its left 175 px (the ENTER end of the
+// field, the Wave readout) off the screen at any zoom and the sidebar past its right edge, and
+// nothing fitted it again as the viewport narrowed. An upright tablet (768 x 1024) was cut off
+// the same way, and a sideways phone (812 x 375) lost the top 3 px of the HUD. On a computer the
+// page has no scrollbar (html: overflow hidden; the body only clips the game), so the two are the
+// same and every window keeps the scale it had. A page with no root size (the test harness) goes
+// by innerWidth and innerHeight.
+function windowSize() {
+  const root = document.documentElement;
+  return { w: (root && root.clientWidth) || window.innerWidth, h: (root && root.clientHeight) || window.innerHeight };
+}
 function scaleToFit() {
   const wrapper = document.getElementById('game-wrapper');
   // The layout to fit, from css/game.css: the canvas with its 2px border on each side, the
@@ -7584,14 +7890,14 @@ function scaleToFit() {
   // #hud above it (40) down. Plus some slack: 1270 × 680 in all.
   const contentW = CANVAS_W + 4 + 20 + 150 + 16;
   const contentH = CANVAS_H + 4 + 40 + 36;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const { w: vw, h: vh } = windowSize();
   const scaleX = (vw - 80) / contentW;  // 80px horizontal breathing room
   const scaleY = (vh - 100) / contentH; // 100px vertical breathing room (HUD + margins)
   const scale = Math.min(scaleX, scaleY, 2.0); // cap at 2x
   wrapper.style.transform = `scale(${scale})`;
 }
 scaleToFit();
+// A new window size, or a phone or a tablet turned round, fits the game again.
 window.addEventListener('resize', scaleToFit);
 </script>
 <script>
