@@ -233,7 +233,7 @@
       transform: scale(1.4);
     }
 
-    .card-icon canvas.word5-canvas {
+    .card-icon canvas.words-canvas {
       transform: scale(1.55);
     }
 
@@ -363,7 +363,7 @@
       --card-icon-bg: linear-gradient(135deg, rgba(244, 63, 133, 0.18), rgba(168, 35, 90, 0.10));
     }
 
-    .card.word5 {
+    .card.words {
       --card-accent: #60a5fa;
       --card-glow: rgba(59, 130, 246, 0.16);
       --card-icon-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.20), rgba(30, 58, 138, 0.10));
@@ -532,13 +532,13 @@
         </div>
       </a>
 
-      <!-- WORD5 -->
-      <a href="/word5/" class="card word5">
+      <!-- WORDS -->
+      <a href="/words/" class="card words">
         <div class="card-header">
           <div class="card-icon">
-            <canvas id="word5-icon" class="word5-canvas" width="48" height="48"></canvas>
+            <canvas id="words-icon" class="words-canvas" width="48" height="48"></canvas>
           </div>
-          <h2 class="card-title">Word5</h2>
+          <h2 class="card-title">Words</h2>
         </div>
         <p class="card-desc">
           Discover the 5-letter word in 5 guesses. Play solo, pass-and-play, or send words to friends with shareable links.
@@ -1039,11 +1039,11 @@
       x.restore();
     })();
 
-    // Draw Word5 icon — a row of 5 solid blue tiles spelling WORD5 (the
+    // Draw Words icon — a row of 5 solid blue tiles spelling WORDS (the
     // winning-row look: every letter correct). Waits for web fonts so the
     // letters render in Inter instead of a fallback face.
     (function() {
-      const c = document.getElementById('word5-icon');
+      const c = document.getElementById('words-icon');
       if (!c) return;
       const x = c.getContext('2d');
 
@@ -1072,7 +1072,7 @@
 
       function draw() {
         x.clearRect(0, 0, 48, 48);
-        ['W', 'O', 'R', 'D', '5'].forEach(function(letter, i) {
+        ['W', 'O', 'R', 'D', 'S'].forEach(function(letter, i) {
           drawTile(startX + i * (ts + gap), letter);
         });
       }
